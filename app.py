@@ -19,7 +19,20 @@ import core
 
 HERE = Path(__file__).parent
 LIQ_HTML_PATH = HERE / "مساعد_تصفية_العملاء_من_برنامج_المحصل.html"
-LOGO_PATH = HERE / "logo.png"
+
+
+def find_logo():
+    """
+    بيدوّر على أي ملف اسمه logo بأي حروف كبيرة/صغيرة وأي امتداد صورة شائع،
+    عشان يشتغل حتى لو الملف اترفع باسم Logo.PNG أو logo.jpg مثلًا.
+    """
+    for p in HERE.iterdir():
+        if p.is_file() and p.stem.lower() == "logo" and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+            return p
+    return None
+
+
+LOGO_PATH = find_logo()
 
 BRAND_RED = "#E30613"
 BRAND_RED_DARK = "#B8050F"
@@ -107,12 +120,22 @@ st.markdown(
 )
 
 # ---------- الهيدر: اللوجو (متوسّط وأصغر) فوق العنوان ----------
-lcol1, lcol2, lcol3 = st.columns([2, 1, 2])
-with lcol2:
-    if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), width=110)
-    else:
-        st.caption("⚠️ logo.png مش موجود جنب app.py")
+if LOGO_PATH is not None:
+    logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    ext = LOGO_PATH.suffix.lstrip(".").lower()
+    mime = "jpeg" if ext in ("jpg", "jpeg") else ext
+    st.markdown(
+        f"""
+        <div style="text-align:center; margin-bottom:4px;">
+            <img src="data:image/{mime};base64,{logo_b64}"
+                 style="width:130px; height:auto; max-width:100%; display:inline-block; object-fit:contain;">
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    files_here = ", ".join(sorted(p.name for p in HERE.iterdir() if p.is_file())) or "(مفيش ملفات خالص)"
+    st.caption(f"⚠️ مفيش ملف اسمه logo (png/jpg) في فولدر البرنامج.\nالملفات الموجودة: {files_here}")
 
 st.markdown(
     """
