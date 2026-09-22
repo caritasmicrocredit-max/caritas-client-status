@@ -60,16 +60,28 @@ st.set_page_config(page_title="مساعد حالة العميل | Caritas Egypt"
 st.markdown(
     f"""
     <style>
-    html, body, [class*="css"] {{ direction: rtl; text-align: right; }}
-    .block-container {{ padding-top: 1.4rem; }}
-
-    .brand-header {{
-        display: flex; align-items: center; gap: 16px;
-        background: linear-gradient(135deg, {BRAND_PINK}, #ffffff);
-        border: 1px solid #f3d3d7; border-radius: 16px;
-        padding: 16px 22px; margin-bottom: 18px;
+    /* RTL قوي: بنستهدف حاويات Streamlit الحقيقية بدل الاعتماد على أسماء classes بتتغيّر بين النسخ */
+    html, body,
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stVerticalBlock"],
+    [data-testid="stHorizontalBlock"], [data-testid="stMarkdownContainer"],
+    [data-testid="stExpander"], [data-testid="stExpanderDetails"],
+    .block-container {{
+        direction: rtl !important;
     }}
-    .brand-header h1 {{ margin: 0; font-size: 1.5rem; color: {BRAND_RED_DARK}; }}
+    [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li {{
+        text-align: right !important;
+    }}
+    [data-testid="stMarkdownContainer"] ol, [data-testid="stMarkdownContainer"] ul {{
+        direction: rtl !important; text-align: right !important;
+        padding-right: 1.4em !important; padding-left: 0 !important; margin-right: 0 !important;
+    }}
+
+    .block-container {{ padding-top: 1.2rem; }}
+
+    .brand-header {{ text-align: center; margin-bottom: 6px; }}
+    .brand-header img {{ max-width: 190px; height: auto; margin-bottom: 6px; }}
+    .brand-header h1 {{ margin: 4px 0 0; font-size: 1.5rem; color: {BRAND_RED_DARK}; }}
     .brand-header p {{ margin: 2px 0 0; color: #6b6b6b; font-size: 0.92rem; }}
 
     div[data-testid="stMetric"] {{
@@ -94,21 +106,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------- الهيدر: اللوجو + العنوان ----------
-h1, h2 = st.columns([1, 5])
-with h1:
-    if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), use_container_width=True)
-with h2:
-    st.markdown(
-        """
-        <div style="padding-top:6px;">
-            <h1 style="margin:0; color:#B8050F;">📄 مساعد حالة العميل</h1>
-            <p style="margin:2px 0 0; color:#6b6b6b;">تحويل تقرير "حالة العميل" لإكسيل، وتجهيز مساعد التصفية تلقائيًا</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+# ---------- الهيدر: اللوجو (متوسّط) فوق العنوان ----------
+logo_tag = ""
+if LOGO_PATH.exists():
+    logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    logo_tag = f'<img src="data:image/png;base64,{logo_b64}" alt="Caritas Egypt">'
+
+st.markdown(
+    f"""
+    <div class="brand-header">
+        {logo_tag}
+        <h1>📄 مساعد حالة العميل</h1>
+        <p>تحويل تقرير "حالة العميل" لإكسيل، وتجهيز مساعد التصفية تلقائيًا</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown(
     '<div class="warn-banner">⚠️ النظام تحت الاختبار والتعديل.. يرجى مراجعة النتائج بعناية قبل الاعتماد عليها.</div>',
@@ -117,15 +130,23 @@ st.markdown(
 
 # ---------- شرح طريقة الاستخدام ----------
 with st.expander("ℹ️ طريقة استخدام البرنامج", expanded=False):
-    st.markdown(
-        """
-1. 📤 **ارفع ملف التقرير** (PDF أو ASPX) اللي حفظته من صفحة "حالة العميل".
-2. 👀 هتظهر **ملخص سريع** ببيانات العميل، وتقدر تفتح تفاصيل العميل والقرض كاملة لو حبيت.
-3. ⬇️ من تبويب **"تحويل لإكسيل"**: دوس تنزيل، وهتاخد ملف Excel فيه بيانات العميل، القرض، الضامنين، والأقساط.
-4. 🧮 من تبويب **"مساعد التصفية"**: دوس الزرار، وهتتفتحلك صفحة حساب التصفية في تبويب جديد، بالأقساط متعبّية أوتوماتيك.
-5. 🔁 عايز تشتغل على عميل تاني؟ ارفع ملفه من نفس الصفحة وكرر الخطوات.
-        """
+    steps = [
+        ("📤", "ارفع ملف التقرير (PDF أو ASPX) اللي حفظته من صفحة \"حالة العميل\"."),
+        ("👀", "هتظهر ملخص سريع ببيانات العميل، وتقدر تفتح تفاصيل العميل والقرض كاملة لو حبيت."),
+        ("⬇️", "من تبويب \"تحويل لإكسيل\": دوس تنزيل، وهتاخد ملف Excel فيه بيانات العميل، القرض، الضامنين، والأقساط."),
+        ("🧮", "من تبويب \"مساعد التصفية\": دوس الزرار، وهتتفتحلك صفحة حساب التصفية في تبويب جديد، بالأقساط متعبّية أوتوماتيك."),
+        ("🔁", "عايز تشتغل على عميل تاني؟ ارفع ملفه من نفس الصفحة وكرر الخطوات."),
+    ]
+    rows = "".join(
+        f"""
+        <div style="display:flex; flex-direction:row-reverse; align-items:flex-start; gap:10px; margin:8px 0;">
+            <div style="background:{BRAND_PINK}; color:{BRAND_RED_DARK}; font-weight:700; min-width:28px;
+                        height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;">{i}</div>
+            <div style="flex:1; text-align:right;">{icon} {text}</div>
+        </div>"""
+        for i, (icon, text) in enumerate(steps, 1)
     )
+    st.markdown(f'<div style="direction:rtl;">{rows}</div>', unsafe_allow_html=True)
 
 st.divider()
 
