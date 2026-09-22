@@ -78,7 +78,7 @@ st.markdown(
         padding-right: 1.4em !important; padding-left: 0 !important; margin-right: 0 !important;
     }}
 
-    .block-container {{ padding-top: 1.2rem; }}
+    .block-container {{ padding-top: 3.5rem; }}
 
     .brand-header {{ text-align: center; margin-bottom: 6px; }}
     .brand-header img {{ max-width: 190px; height: auto; margin-bottom: 6px; }}
