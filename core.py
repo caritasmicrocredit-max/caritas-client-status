@@ -417,34 +417,44 @@ def _table(ws, headers, rows, date_cols=(), num_cols=()):
     ws.freeze_panes = "A2"
 
 
+# ─────────────────────────── تسمية العرض: "قرض" → "تمويل" ───────────────────────────
+# التحليل والمطابقة مع نص التقرير الأصلي بيفضلوا شغالين بكلمة "قرض" زي ما هي مطبوعة في التقرير،
+# لأن أي تغيير هنا هيوقف المطابقة. الدالة دي بس بتغيّر شكل العناوين والقيم في الإكسيل والواجهة.
+def to_display(text):
+    text = str(text)
+    text = text.replace("قروض", "تمويلات")
+    text = text.replace("قرض", "تمويل")
+    return text
+
+
 def write_workbook(result, out_path):
     client, loans, guarantors, installments, loan_list, unknown = result
     wb = Workbook()
 
     ws = wb.active
     ws.title = "بيانات العميل"
-    _table(ws, ["البيان", "القيمة"], [[k, v] for k, v in client.items()])
+    _table(ws, ["البيان", "القيمة"], [[to_display(k), v] for k, v in client.items()])
     ws.append([])
     ws.append([NOTE])
     _style_sheet(ws)
 
     if loans:
-        ws = wb.create_sheet("بيانات القرض")
+        ws = wb.create_sheet(to_display("بيانات القرض"))
         keys = []
         for l in loans:
             keys += [k for k in l if k not in keys]
-        _table(ws, keys, [[l.get(k, "") for k in keys] for l in loans])
+        _table(ws, [to_display(k) for k in keys], [[l.get(k, "") for k in keys] for l in loans])
         _style_sheet(ws)
 
     if loan_list:
-        ws = wb.create_sheet("ملخص القروض")
+        ws = wb.create_sheet(to_display("ملخص القروض"))
         keys = []
         for l in loan_list:
             keys += [k for k in l if k not in keys]
-        rows = [[l.get(k, "") for k in keys] for l in loan_list]
+        rows = [[to_display(l.get(k, "")) if k == "القسم" else l.get(k, "") for k in keys] for l in loan_list]
         dcols = [i for i, k in enumerate(keys) if k == "التاريخ"]
         ncols = [i for i, k in enumerate(keys) if k not in ("القسم", "التاريخ", "فترة السداد", "حالة القرض") and not k.startswith("عمود")]
-        _table(ws, keys, rows, date_cols=dcols, num_cols=ncols)
+        _table(ws, [to_display(k) for k in keys], rows, date_cols=dcols, num_cols=ncols)
         _style_sheet(ws)
 
     if guarantors:
@@ -452,13 +462,13 @@ def write_workbook(result, out_path):
         keys = []
         for g in guarantors:
             keys += [k for k in g if k not in keys]
-        _table(ws, keys, [[g.get(k, "") for k in keys] for g in guarantors],
+        _table(ws, [to_display(k) for k in keys], [[g.get(k, "") for k in keys] for g in guarantors],
                date_cols=[i for i, k in enumerate(keys) if k in ("تاريخ الإصدار", "تاريخ الميلاد")])
         _style_sheet(ws)
 
     if installments:
         ws = wb.create_sheet("الأقساط")
-        _table(ws, ["كود القرض"] + INST_COLS, installments,
+        _table(ws, [to_display(h) for h in (["كود القرض"] + INST_COLS)], installments,
                date_cols=[2, 10], num_cols=[1, 3, 4, 5, 6, 7, 8, 12])
         _style_sheet(ws)
 
@@ -533,7 +543,7 @@ def build_liquidation_html(template_html, rows, client, source_name="", loan_cod
   info.style.cssText = 'background:#eafaf1;border:1px solid #1e8449;color:#145a32;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;text-align:right;';
   info.textContent = '\\u2705 الأقساط اتحمّلت من ملف التقرير' + (P.source ? ' (' + P.source + ')' : '') +
     (P.clientName ? ' — العميل: ' + P.clientName : '') + (P.clientCode ? ' — كود ' + P.clientCode : '') +
-    (P.loan ? ' — القرض ' + P.loan : '') + '. تقدر تعدّل النص تحت وتعمل تحليل تاني لو حبيت.';
+    (P.loan ? ' — التمويل ' + P.loan : '') + '. تقدر تعدّل النص تحت وتعمل تحليل تاني لو حبيت.';
   box.parentNode.insertBefore(info, box);
   box.value = P.lines;
   try { processAll(); } catch (e) { console.error(e); }

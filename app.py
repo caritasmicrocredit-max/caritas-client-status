@@ -106,16 +106,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------- الهيدر: اللوجو (متوسّط) فوق العنوان ----------
-logo_tag = ""
-if LOGO_PATH.exists():
-    logo_b64 = base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
-    logo_tag = f'<img src="data:image/png;base64,{logo_b64}" alt="Caritas Egypt">'
+# ---------- الهيدر: اللوجو (متوسّط وأصغر) فوق العنوان ----------
+lcol1, lcol2, lcol3 = st.columns([2, 1, 2])
+with lcol2:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=110)
+    else:
+        st.caption("⚠️ logo.png مش موجود جنب app.py")
 
 st.markdown(
-    f"""
+    """
     <div class="brand-header">
-        {logo_tag}
         <h1>📄 مساعد حالة العميل</h1>
         <p>تحويل تقرير "حالة العميل" لإكسيل، وتجهيز مساعد التصفية تلقائيًا</p>
     </div>
@@ -132,8 +133,8 @@ st.markdown(
 with st.expander("ℹ️ طريقة استخدام البرنامج", expanded=False):
     steps = [
         ("📤", "ارفع ملف التقرير (PDF أو ASPX) اللي حفظته من صفحة \"حالة العميل\"."),
-        ("👀", "هتظهر ملخص سريع ببيانات العميل، وتقدر تفتح تفاصيل العميل والقرض كاملة لو حبيت."),
-        ("⬇️", "من تبويب \"تحويل لإكسيل\": دوس تنزيل، وهتاخد ملف Excel فيه بيانات العميل، القرض، الضامنين، والأقساط."),
+        ("👀", "هتظهر ملخص سريع ببيانات العميل، وتقدر تفتح تفاصيل العميل والتمويل كاملة لو حبيت."),
+        ("⬇️", "من تبويب \"تحويل لإكسيل\": دوس تنزيل، وهتاخد ملف Excel فيه بيانات العميل، التمويل، الضامنين، والأقساط."),
         ("🧮", "من تبويب \"مساعد التصفية\": دوس الزرار، وهتتفتحلك صفحة حساب التصفية في تبويب جديد، بالأقساط متعبّية أوتوماتيك."),
         ("🔁", "عايز تشتغل على عميل تاني؟ ارفع ملفه من نفس الصفحة وكرر الخطوات."),
     ]
@@ -179,13 +180,13 @@ c3.metric("📅 عدد الأقساط", len([r for r in installments if r[1] != 
 c4.metric("🤝 عدد الضامنين", len(guarantors))
 
 if unknown:
-    st.warning("⚠️ شكل جدول القروض في الملف ده مختلف شوية — اتحفظ في شيت \"غير معروف\" في الإكسيل.")
+    st.warning("⚠️ شكل جدول التمويلات في الملف ده مختلف شوية — اتحفظ في شيت \"غير معروف\" في الإكسيل.")
 
-with st.expander("🔍 عرض بيانات العميل والقرض"):
+with st.expander("🔍 عرض بيانات العميل والتمويل"):
     st.write("**بيانات العميل**")
     st.table({"البيان": list(client.keys()), "القيمة": list(client.values())})
     if loans:
-        st.write("**بيانات القرض**")
+        st.write("**بيانات التمويل**")
         st.dataframe(loans, use_container_width=True)
 
 st.divider()
@@ -212,7 +213,7 @@ with tab_liq:
         st.error("⚠️ مفيش جدول أقساط في التقرير ده.")
     else:
         codes = list(groups)
-        code = codes[0] if len(codes) == 1 else st.selectbox("💳 اختار القرض", codes)
+        code = codes[0] if len(codes) == 1 else st.selectbox("💳 اختار التمويل", codes)
         if not LIQ_HTML_PATH.exists():
             st.error(
                 f"⚠️ مش لاقي صفحة مساعد التصفية ({LIQ_HTML_PATH.name}). "
