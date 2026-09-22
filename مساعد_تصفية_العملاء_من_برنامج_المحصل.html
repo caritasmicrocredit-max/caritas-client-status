@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>مساعد تصفية العملاء من برنامج المحصل</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1800px; margin: auto; background: white; padding: 25px; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+        .container h2 { color: #2c3e50; text-align: center; border-bottom: 3px solid #3498db; padding-bottom: 10px; font-size: 22px; margin-bottom: 8px; }
+        .date-info { text-align: center; margin-bottom: 15px; color: #2980b9; font-weight: bold; font-size: 14px; }
+        .container textarea { width: 100%; height: 130px; padding: 12px; border: 2px solid #dfe6e9; border-radius: 8px; margin-bottom: 15px; outline: none; font-size: 13px; resize: vertical; transition: border 0.3s; }
+        .container textarea:focus { border-color: #3498db; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .container button { flex: 1; min-width: 140px; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: bold; transition: 0.25s; }
+        .container button:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn-process { background: linear-gradient(135deg, #3498db, #2980b9); color: white; }
+        .btn-excel   { background: linear-gradient(135deg, #27ae60, #1e8449); color: white; }
+        .btn-clear   { background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; }
+        .btn-settlement { background: linear-gradient(135deg, #8e44ad, #6c3483); color: white; }
+        .mode-tabs { display: flex; gap: 10px; margin-bottom: 18px; }
+        .mode-tab {
+            flex: 1; text-align: center; padding: 12px; border-radius: 8px; cursor: pointer;
+            font-weight: bold; font-size: 14px; border: 2px solid transparent;
+            background: #ecf0f1; color: #7f8c8d; transition: 0.2s;
+        }
+        .mode-tab.active-client { background: #eafaf1; color: #1e8449; border-color: #1e8449; }
+        .mode-tab.active-insurance { background: #ebf5fb; color: #1a5276; border-color: #1a5276; }
+        .mode-note { text-align: center; font-size: 12px; color: #7f8c8d; margin: -8px 0 15px; }
+        .settlement-bar {
+            display: none; justify-content: center; margin-top: 16px;
+        }
+        .table-container { overflow-x: auto; margin-top: 20px; max-height: 640px; border: 1px solid #ddd; border-radius: 8px; }
+        #resultTable { width: 100%; border-collapse: collapse; min-width: 1750px; }
+        .container th, .container td { border: 1px solid #d1d8e0; padding: 9px 10px; text-align: center; font-size: 13px; }
+        .container th { background: #2c3e50; color: white; position: sticky; top: 0; z-index: 10; }
+        th.orange-header { background: #e67e22 !important; }
+        tbody tr:nth-child(even) td { background-color: #f8f9fa; }
+        td.col-index { background: linear-gradient(135deg, #2c3e50, #34495e) !important; color: #f1c40f !important; font-weight: bold; font-size: 14px; min-width: 38px; }
+        td.status-past    { color: #636e72; background-color: #f5f6fa !important; }
+        td.status-overdue { color: #922b21 !important; font-weight: bold; background-color: #fdecea !important; }
+        td.status-current { color: #d35400; font-weight: bold; background-color: #fff3e0 !important; border: 2px solid #e67e22 !important; }
+        td.status-future  { color: #1565c0; font-weight: bold; background-color: #e8f0fe !important; }
+        .col-penalty { background-color: #fee2e2 !important; color: #b91c1c; font-weight: bold; }
+        td.tsf-past    { background-color: #f5f6fa !important; color: #aaa; }
+        td.tsf-overdue { background-color: #fdecea !important; font-weight: bold; color: #922b21; }
+        td.tsf-current { background-color: #fff3e0 !important; font-weight: bold; color: #bf360c; }
+        td.tsf-future  { background-color: #e8f4fd !important; font-weight: bold; color: #1a5276; }
+        .total-row td { background-color: #f39c12 !important; font-weight: bold; color: #2c3e50; }
+        .final-row td  { background: #0d1b2a !important; color: white !important; }
+        .final-row td.final-val { font-size: 22px; font-weight: bold; color: #f1c40f !important; letter-spacing: 1px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { border-radius: 10px; padding: 14px; text-align: center; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
+        .stat-card .val { font-size: 18px; font-weight: bold; display: block; }
+        .stat-card .lbl { font-size: 12px; margin-top: 4px; opacity: 0.8; }
+        .card-blue   { background: #ebf5fb; color: #1a5276; }
+        .card-green  { background: #eafaf1; color: #1e8449; }
+        .card-orange { background: #fef9e7; color: #b7770d; }
+        .card-red    { background: #fdedec; color: #922b21; }
+        .card-gold   { background: #fef3c7; color: #92400e; }
+        .card-purple { background: #f5eef8; color: #6c3483; }
+        .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; align-items: center; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-box { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+        .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge-paid-early { background:#d5f5e3; color:#1e8449; }
+        .badge-paid-late  { background:#fde8d8; color:#a04000; }
+        .badge-not-due    { background:#eaf2ff; color:#154360; }
+        .disclaimer { text-align: center; color: #e74c3c; font-weight: bold; margin-top: 20px; font-size: 13px; padding: 10px; border: 1px dashed #e74c3c; border-radius: 8px; background-color: #fff5f5; }
+        #skipWarning { text-align: right; color: #7d6608; font-weight: bold; margin: 10px 0; font-size: 13px; padding: 10px 14px; border: 1px solid #f1c40f; border-radius: 8px; background-color: #fdf6e3; line-height: 1.6; }
+        .footer-credit { text-align: center; margin-top: 15px; font-size: 13px; color: #7f8c8d; border-top: 1px solid #eee; padding-top: 12px; }
+        .footer-credit span { color: #3498db; font-weight: bold; }
+        /* صف التفصيل */
+        .breakdown-inner { width:100%; border-collapse:collapse; color:#ecf0f1; background:#1a252f; }
+        .breakdown-inner td { border: none; padding: 12px 10px; text-align: center; }
+        .bd-label { font-size: 11px; margin-bottom: 5px; }
+        .bd-val   { font-size: 17px; font-weight: bold; }
+        .bd-sep   { font-size: 22px; color: #7f8c8d; }
+        .bd-total-cell { background: #0d1b2a !important; }
+        .bd-total-cell .bd-val { font-size: 22px; color: #f1c40f !important; }
+    
+/* ===== أنماط قسم طلب السداد المعجل (نطاقها محصور جوه #settlementSection) ===== */
+#settlementSection * { box-sizing: border-box; }#settlementSection {
+    font-family: "Arial", "Tahoma", sans-serif;
+    color: #000;
+    background: #f2f2f2;
+    margin: 0;
+    padding: 20px 10px;
+  }#settlementSection .page {
+    max-width: 800px;
+    margin: 0 auto;
+  }#settlementSection /* ===== Buttons / controls bar ===== */
+  .toolbar {
+    max-width: 800px;
+    margin: 0 auto 16px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }#settlementSection button {
+    font-family: inherit;
+    font-size: 15px;
+    padding: 10px 22px;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    cursor: pointer;
+    border-radius: 4px;
+  }#settlementSection button:hover { background: #000; color: #fff; }#settlementSection /* ===== Data entry form ===== */
+  #formView {
+    background: #fff;
+    border: 1px solid #000;
+    padding: 25px 30px;
+  }#settlementSection #formView h2 {
+    text-align: center;
+    font-size: 20px;
+    margin: 0 0 20px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 12px;
+  }#settlementSection .field {
+    margin-bottom: 16px;
+  }#settlementSection .field label {
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }#settlementSection .field input, #settlementSection .field textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid #999;
+    border-radius: 3px;
+    background: #fff;
+    color: #000;
+  }#settlementSection .field textarea { resize: vertical; min-height: 50px; }#settlementSection .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }#settlementSection .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+  }#settlementSection .section-label {
+    font-weight: bold;
+    font-size: 15px;
+    margin: 22px 0 10px;
+    padding-top: 14px;
+    border-top: 1px dashed #999;
+  }#settlementSection .hint {
+    font-size: 12px;
+    color: #555;
+    margin-top: 4px;
+  }#settlementSection .words-hint {
+    font-size: 13px;
+    color: #0056b3;
+    margin-top: 5px;
+    font-weight: bold;
+    min-height: 16px;
+  }#settlementSection .readonly-field input[readonly] {
+    background: #eee;
+  }#settlementSection /* ===== Printable report (styled like the original form) ===== */
+  #reportView {
+    display: none;
+  }#settlementSection #reportView .sheet {
+    background: #fff;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 25px 30px;
+    border: 1px solid #000;
+    line-height: 1.6;
+  }#settlementSection .header {
+    width: 100%;
+    border-bottom: 3px double #000;
+    padding-bottom: 8px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    text-align: right;
+  }#settlementSection .header p { margin: 2px 0; font-size: 14px; white-space: nowrap; }#settlementSection .header .underline { text-decoration: underline; }#settlementSection .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 60px;
+    margin: 2px 0;
+    font-size: 14px;
+  }#settlementSection .header-row span { white-space: nowrap; }#settlementSection h1 {
+    text-align: center;
+    font-size: 22px;
+    text-decoration: underline double;
+    margin: 10px 0 20px;
+  }#settlementSection .to-line { font-weight: bold; font-size: 17px; margin-bottom: 10px; }#settlementSection .greeting { font-weight: bold; font-size: 16px; margin-bottom: 14px; }#settlementSection #reportView p { margin: 10px 0; font-size: 15px; text-align: justify; }#settlementSection .fill-value {
+    border-bottom: 1px dotted #000;
+    display: inline-block;
+    min-width: 30px;
+    padding: 0 4px;
+    font-weight: bold;
+  }#settlementSection ul.notes { list-style: disc; padding-inline-start: 22px; margin: 12px 0; }#settlementSection ul.notes li { font-size: 15px; margin: 8px 0; }#settlementSection .declaration { text-align: center; font-weight: bold; font-size: 16px; margin: 16px 0 6px; }#settlementSection .attachment {
+    font-size: 14px;
+    border-top: 2px solid #000;
+    border-bottom: 3px double #000;
+    padding: 6px 0;
+    margin-bottom: 20px;
+  }#settlementSection .office-section { margin-top: 10px; }#settlementSection .office-title { font-weight: bold; font-size: 15px; margin-bottom: 12px; }#settlementSection table.office-table {
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }#settlementSection table.office-table td {
+    border: 1px solid #000;
+    padding: 8px 4px;
+    text-align: center;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }#settlementSection table.office-table td.fill-cell {
+    min-height: 30px;
+    font-weight: bold;
+    padding: 10px 5px;
+  }#settlementSection table.office-table td.fill-cell .cell-words {
+    display: block;
+    font-size: 10px;
+    font-weight: normal;
+    margin-top: 4px;
+    color: #333;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+  }#settlementSection .ack { font-size: 15px; text-align: justify; margin: 14px 0; }#settlementSection .sign-block { margin-top: 10px; }#settlementSection .sign-block p { margin: 6px 0; }#settlementSection .sign-title { font-weight: bold; }#settlementSection .witness-block {
+    margin-top: 40px;
+    padding-top: 15px;
+    border-top: 1px solid #000;
+  }#settlementSection .witness-block p { margin: 10px 0; }#settlementSection .witness-block .underline { text-decoration: underline; font-weight: bold; }
+
+  
+
+  
+
+@page { size: A4; margin: 8mm; }
+@media print {
+    body.printing-settlement { background: #fff; padding: 0; margin: 0; }
+    #settlementSection .toolbar { display: none !important; }
+    #settlementSection #settlementCloseBar { display: none !important; }
+    #settlementSection #reportView .sheet { border: none !important; padding: 0 !important; max-width: 100% !important; line-height: 1.35; }
+    #settlementSection .header { padding-bottom: 5px; margin-bottom: 10px; }
+    #settlementSection .header p, #settlementSection .header-row { font-size: 12px; margin: 1px 0; }
+    #settlementSection h1 { font-size: 18px; margin: 6px 0 10px; }
+    #settlementSection .to-line { font-size: 14px; margin-bottom: 5px; }
+    #settlementSection .greeting { font-size: 13px; margin-bottom: 6px; }
+    #settlementSection #reportView p { margin: 5px 0; font-size: 12.5px; }
+    #settlementSection .fill-value { min-width: 20px; }
+    #settlementSection ul.notes { margin: 6px 0; padding-inline-start: 18px; }
+    #settlementSection ul.notes li { font-size: 12.5px; margin: 4px 0; }
+    #settlementSection .declaration { font-size: 13px; margin: 8px 0 4px; }
+    #settlementSection .attachment { font-size: 11px; padding: 4px 0; margin-bottom: 10px; }
+    #settlementSection .office-section { margin-top: 4px; }
+    #settlementSection .office-title { font-size: 12px; margin-bottom: 6px; }
+    #settlementSection table.office-table { margin-bottom: 8px !important; font-size: 10.5px !important; table-layout: fixed; width: 100%; max-width: 100%; }
+    #settlementSection table.office-table td { padding: 4px 3px !important; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; }
+    #settlementSection table.office-table td.fill-cell { padding: 5px 3px !important; }
+    #settlementSection table.office-table td.fill-cell .cell-words { font-size: 8.5px !important; margin-top: 2px; word-wrap: break-word; overflow-wrap: break-word; }
+    #settlementSection .ack { font-size: 11.5px; margin: 8px 0; }
+    #settlementSection .sign-block { margin-top: 4px; }
+    #settlementSection .sign-block p { margin: 3px 0; }
+    #settlementSection .witness-block { margin-top: 16px; padding-top: 8px; }
+    #settlementSection .witness-block p { margin: 4px 0; }
+  }
+        /* عزل الطباعة: لما نطبع من جوه قسم طلب السداد المعجل بس */
+        body.printing-settlement > .container,
+        body.printing-settlement > .container * { display: none !important; }
+        body.printing-settlement #settlementSection { display: block !important; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h2>&#x1F3E6; مساعد تصفية العملاء من برنامج المحصل</h2>
+    <div class="date-info" id="currentDateDisplay"></div>
+
+    <div class="mode-tabs">
+        <div class="mode-tab active-client" id="tabClient" onclick="setMode('client')">&#x1F464; تصفية للعميل (تشمل عمولة 5% والغرامات)</div>
+        <div class="mode-tab" id="tabInsurance" onclick="setMode('insurance')">&#x1F3E2; تصفية لشركة التأمين (بدون عمولة ولا غرامات)</div>
+    </div>
+    <div class="mode-note" id="modeNote"></div>
+
+    <textarea id="dataInput" placeholder="قم بلصق بيانات الأقساط هنا (مباشرةً من برنامج المحصل)..."></textarea>
+    <div class="btn-group">
+        <button class="btn-process" onclick="processAll()">&#x1F4CA; تحليل البيانات وعرض الإجماليات</button>
+        <button class="btn-excel"   onclick="exportToExcel()">&#x1F4E5; تصدير Excel</button>
+        <button class="btn-clear"   onclick="clearAll()">&#x1F5D1;&#xFE0F; مسح البيانات</button>
+    </div>
+    <div id="skipWarning" style="display:none;"></div>
+    <div id="statsArea"></div>
+    <div id="tableOutput" class="table-container"></div>
+    <div class="settlement-bar" id="settlementBar">
+        <button class="btn-settlement" onclick="openSettlementRequest()">&#x1F4C4; فتح بيانات طلب السداد المعجل بهذه الأرقام (اختياري)</button>
+    </div>
+    <div class="disclaimer">&#x26A0;&#xFE0F; النظام تحت الاختبار والتعديل.. يرجى مراجعة النتائج بعناية قبل الاعتماد عليها.</div>
+    <div class="footer-credit">Powered by <span>Loans &amp; Economic Empowerment IT Group</span></div>
+</div>
+
+<div id="settlementSection" style="display:none;">
+
+
+  <div id="settlementCloseBar" style="max-width:800px; margin:0 auto 10px; display:flex; justify-content:flex-end;">
+    <button type="button" onclick="closeSettlementSection()" style="background:#7f8c8d;">&#x2715; إغلاق</button>
+  </div>
+
+  <div class="toolbar" id="formToolbar">
+    <button type="button" onclick="generateReport()">إنشاء التقرير</button>
+  </div>
+
+  <!-- ============ DATA ENTRY FORM ============ -->
+  <div class="page" id="formView">
+    <h2>بيانات طلب السداد المعجل</h2>
+
+    <div class="field">
+      <label>اسم المكتب</label>
+      <input type="text" id="officeName" placeholder="اسم مكتب الجمعية">
+    </div>
+
+    <div class="field">
+      <label>اسم العميل</label>
+      <input type="text" id="clientName" placeholder="اسم العميل بالكامل">
+    </div>
+
+    <div class="field">
+      <label>مبلغ التمويل الذى تم الحصول عليه</label>
+      <input type="number" id="loanAmount" placeholder="مثال: 20000" oninput="updateWordHint('loanAmount','loanAmountWords')">
+      <div class="words-hint" id="loanAmountWords"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>مدة السداد (بالشهور)</label>
+        <input type="number" id="months" placeholder="مثال: 12">
+      </div>
+      <div class="field">
+        <label>قيمة القسط الشهرى</label>
+        <input type="number" id="installment" placeholder="مثال: 1700" oninput="updateWordHint('installment','installmentWords')">
+        <div class="words-hint" id="installmentWords"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>سبب طلب السداد المعجل (يذكر تفصيليا)</label>
+      <textarea id="reason" placeholder="اكتب السبب هنا"></textarea>
+    </div>
+
+    <div class="field">
+      <label>مصدر الاموال</label>
+      <input type="text" id="fundSource" placeholder="مصدر الاموال">
+    </div>
+
+    <div class="section-label">تملأ بواسطة موظف جمعية كاريتاس مصر</div>
+
+    <div class="field">
+      <label>الكود</label>
+      <input type="text" id="clientCode" placeholder="كود العميل">
+    </div>
+
+    <div class="row3">
+      <div class="field">
+        <label>المبلغ المطلوب سداده (اصل)</label>
+        <input type="number" id="principal" placeholder="0" oninput="calcTotals()">
+        <div class="words-hint" id="principalWords"></div>
+      </div>
+      <div class="field">
+        <label>عمولة السداد المعجل ( 5% )</label>
+        <input type="text" id="commission" oninput="updateWordHint('commission','commissionWords')">
+        <div class="hint">تُحسب تلقائيًا = 5% من المبلغ الأصلى، وتقدر تعدّلها يدويًا فى أي وقت</div>
+        <div class="words-hint" id="commissionWords"></div>
+      </div>
+      <div class="field">
+        <label>اجمالى المبلغ المطلوب سداده</label>
+        <input type="text" id="total" oninput="updateWordHint('total','totalWords')">
+        <div class="words-hint" id="totalWords"></div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>قيمة الفوائد المتبقية (المخصومة)</label>
+        <input type="number" id="remainingInterest" placeholder="0" oninput="calcTotals()">
+        <div class="words-hint" id="remainingInterestWords"></div>
+      </div>
+      <div class="field">
+        <label>اجمالى المبلغ المتبقى على العميل (الاصل + الفوائد)</label>
+        <input type="text" id="totalRemaining" oninput="updateWordHint('totalRemaining','totalRemainingWords')">
+        <div class="words-hint" id="totalRemainingWords"></div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>اسم الموظف (الشاهد على التوقيع)</label>
+        <input type="text" id="witnessName" placeholder="اسم الموظف">
+      </div>
+      <div class="field">
+        <label>التاريخ</label>
+        <input type="text" id="reportDate" placeholder="يوم/شهر/سنة  مثال: 28/07/2026">
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ PRINTABLE REPORT ============ -->
+  <div id="reportView">
+    <div class="toolbar">
+      <button type="button" onclick="printSettlementOnly()">طباعة / حفظ PDF</button>
+      <button type="button" onclick="saveAsWord()">حفظ كملف Word</button>
+      <button type="button" onclick="backToForm()">تعديل البيانات</button>
+    </div>
+
+    <div class="sheet">
+      <div class="header">
+        <div class="header-row">
+          <span>جمعية كاريتاس – مصر ( مكتب <span id="out_officeName">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> )</span>
+          <span>برنامج الاقراض و التمكين الاقتصادى</span>
+        </div>
+        <p>مسجلة برقم 1150 لسنه 1967</p>
+        <p class="underline">المرخصة من هيئة الرقابة المالية برقم 1373</p>
+      </div>
+
+      <h1>طلب سداد معجل</h1>
+
+      <div class="to-line">السادة جمعية كاريتاس مصر</div>
+      <div class="greeting">تحية طيبة و بعد,,,,</div>
+
+      <p>مقدمه لسيادتكم العميل / <span class="fill-value" id="out_clientName">&nbsp;</span></p>
+
+      <p>حيث اننى قد حصلت على تمويل من الجمعية مبلغ <span class="fill-value" id="out_loanAmount">&nbsp;</span></p>
+
+      <p>على أن يسدد على مدة <span class="fill-value" id="out_months">&nbsp;</span> شهر بواقع قسط شهرى بقيمة <span class="fill-value" id="out_installment">&nbsp;</span></p>
+
+      <p>اجمالى المبلغ المتبقى على العميل : <span class="fill-value" id="out_totalRemaining">&nbsp;</span></p>
+
+      <p>وحيث أننى ارغب فى سداد باقى الأقساط المتبقية على وتسوية حسابى لدى الجمعية لذا نرجو من سيادتكم الموافقة على سداد معجل لباقى الاقساط مع إلزامى بسداد المصاريف اللازمة لذلك .</p>
+
+      <ul class="notes">
+        <li>سبب طلب السداد المعجل : ( يذكر تفصيليا ) <span class="fill-value" id="out_reason">&nbsp;</span></li>
+        <li>مصدر الاموال : <span class="fill-value" id="out_fundSource">&nbsp;</span></li>
+      </ul>
+
+      <div class="declaration">و هذا اقرار منى بذلك</div>
+
+      <div class="attachment">- &nbsp; مرفق صورة من الرقم القومى</div>
+
+      <div class="office-section">
+        <div class="office-title">تملأ بواسطة موظف جمعية كاريتاس مصر</div>
+
+        <table class="office-table">
+          <tr>
+            <td>اسم العميل</td>
+            <td>الكود</td>
+          </tr>
+          <tr>
+            <td class="fill-cell" id="out_clientName2">&nbsp;</td>
+            <td class="fill-cell" id="out_clientCode">&nbsp;</td>
+          </tr>
+        </table>
+
+        <table class="office-table">
+          <tr>
+            <td>المبلغ المطلوب سداده اصل</td>
+            <td>قيمة الفوائد المخصومة</td>
+            <td>عمولة السداد المعجل ( 5% )</td>
+            <td>اجمالى المبلغ المطلوب سداده</td>
+          </tr>
+          <tr>
+            <td class="fill-cell"><span id="out_principal">&nbsp;</span><span class="cell-words" id="out_principalWords"></span></td>
+            <td class="fill-cell"><span id="out_remainingInterest">&nbsp;</span><span class="cell-words" id="out_remainingInterestWords"></span></td>
+            <td class="fill-cell"><span id="out_commission">&nbsp;</span><span class="cell-words" id="out_commissionWords"></span></td>
+            <td class="fill-cell"><span id="out_total">&nbsp;</span><span class="cell-words" id="out_totalWords"></span></td>
+          </tr>
+        </table>
+
+        <p class="ack">
+          اقر انا / اننى قد اطلعت على المبالغ المطلوب سدادها و قيمة السداد المعجل المطلوبة منى و على معرفه بقيمة العمولة ( 5% ) المراد سدادها لاتمام سداد التمويل و هذا اقرار منى بذلك
+        </p>
+
+        <div class="sign-block">
+          <p class="sign-title">توقيع العميل</p>
+          <p>الاسم: <span class="fill-value" id="out_clientName3">&nbsp;</span></p>
+          <p>التوقيع: <span class="fill-value">&nbsp;</span></p>
+        </div>
+
+        <div class="witness-block">
+          <p><span class="underline">تم توقيع العميل امامى انا</span> : &nbsp; الاسم : <span class="fill-value" id="out_witnessName">&nbsp;</span></p>
+          <p>التوقيع: <span class="fill-value">&nbsp;</span></p>
+          <p>التاريخ : <span class="fill-value" id="out_date">&nbsp;</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function formatAr(v) {
+    const n = parseFloat(v);
+    if (v === '' || v === null || v === undefined || isNaN(n)) return '\u00A0';
+    return n.toLocaleString('en-US');
+  }
+
+  // ===== Number to Arabic words (adapted from the office's number-to-words tool) =====
+  function numberToArabicWords(vNumber) {
+    if (vNumber === '' || vNumber === null || vNumber === undefined || isNaN(vNumber)) return '';
+    const number = parseFloat(vNumber);
+    if (number === 0) return '';
+
+    const units = [
+      "", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة",
+      "عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"
+    ];
+    const tens = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+    const hundreds = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+
+    const convert = (num) => {
+      let result = "";
+      let n = parseInt(num, 10);
+      const h = Math.floor(n / 100);
+      if (h > 0) result += hundreds[h];
+      n %= 100;
+      if (n > 0) {
+        if (h > 0) result += " و ";
+        if (n < 20) {
+          result += units[n];
+        } else {
+          const u = n % 10;
+          const t = Math.floor(n / 10);
+          if (u > 0) result += units[u] + " و ";
+          result += tens[t];
+        }
+      }
+      return result;
+    };
+
+    let parts = [];
+    let integerPart = Math.floor(number);
+    let decimalPart = Math.round((number - integerPart) * 100);
+
+    let i = 0;
+    while (integerPart > 0) {
+      const chunk = integerPart % 1000;
+      if (chunk > 0) {
+        let chunkText = convert(chunk);
+        if (i === 1) {
+          if (chunk === 1) chunkText = "ألف";
+          else if (chunk === 2) chunkText = "ألفان";
+          else if (chunk >= 3 && chunk <= 10) chunkText += " آلاف";
+          else chunkText += " ألف";
+        } else if (i === 2) {
+          if (chunk === 1) chunkText = "مليون";
+          else if (chunk === 2) chunkText = "مليونان";
+          else if (chunk >= 3 && chunk <= 10) chunkText += " ملايين";
+          else chunkText += " مليون";
+        } else if (i === 3) {
+          if (chunk === 1) chunkText = "مليار";
+          else if (chunk === 2) chunkText = "ملياران";
+          else if (chunk >= 3 && chunk <= 10) chunkText += " مليارات";
+          else chunkText += " مليار";
+        }
+        parts.unshift(chunkText);
+      }
+      integerPart = Math.floor(integerPart / 1000);
+      i++;
+    }
+
+    let finalResult = parts.join(" و ");
+    if (finalResult !== "") finalResult += " جنيهًا فقط لا غير";
+
+    if (decimalPart > 0) {
+      let decimalText = convert(decimalPart);
+      if (decimalText !== "") {
+        if (finalResult !== "") finalResult += " و ";
+        finalResult += decimalText + " قرشًا";
+      }
+    }
+    return finalResult;
+  }
+
+  function updateWordHint(inputId, hintId) {
+    const v = document.getElementById(inputId).value;
+    document.getElementById(hintId).textContent = numberToArabicWords(v);
+  }
+
+  function calcTotals() {
+    const raw = parseFloat(document.getElementById('principal').value);
+    const principal = isNaN(raw) ? 0 : raw;
+    const commission = Math.round(principal * 0.05);
+    const total = Math.round(principal + commission);
+    document.getElementById('commission').value = commission ? commission.toLocaleString('en-US') : '';
+    document.getElementById('total').value = total ? total.toLocaleString('en-US') : '';
+    document.getElementById('principalWords').textContent = numberToArabicWords(principal);
+    document.getElementById('commissionWords').textContent = numberToArabicWords(commission);
+    document.getElementById('totalWords').textContent = numberToArabicWords(total);
+
+    const rawInterest = parseFloat(document.getElementById('remainingInterest').value);
+    const remainingInterest = isNaN(rawInterest) ? 0 : rawInterest;
+    const totalRemaining = Math.round(principal + remainingInterest);
+    document.getElementById('remainingInterestWords').textContent = numberToArabicWords(remainingInterest);
+    document.getElementById('totalRemaining').value = totalRemaining ? totalRemaining.toLocaleString('en-US') : '';
+    document.getElementById('totalRemainingWords').textContent = numberToArabicWords(totalRemaining);
+  }
+
+  function val(id) {
+    const v = document.getElementById(id).value;
+    return v && v.trim() !== '' ? v : '\u00A0';
+  }
+
+  function formattedDate() {
+    const d = document.getElementById('reportDate').value.trim();
+    if (!d) return '\u00A0';
+    // بنقبل يوم/شهر/سنة بأى فاصل (/ أو - أو مسافة) ونوحّدها لصورة يوم/شهر/سنة
+    const parts = d.split(/[\/\-\s]+/).filter(Boolean);
+    if (parts.length === 3) {
+      const [a, b, c] = parts;
+      // لو أول جزء اتكتب بصيغة سنة (4 أرقام) بالغلط، رجّعها يوم/شهر/سنة
+      if (a.length === 4) return `${c}/${b}/${a}`;
+      return `${a}/${b}/${c}`;
+    }
+    return d; // مقدرناش نفهم الصيغة، نعرض زى ما اتكتب
+  }
+
+  function generateReport() {
+    document.getElementById('out_officeName').textContent = val('officeName');
+    document.getElementById('out_clientName').textContent = val('clientName');
+    document.getElementById('out_clientName2').textContent = val('clientName');
+    document.getElementById('out_clientName3').textContent = val('clientName');
+
+    const loanAmount = document.getElementById('loanAmount').value;
+    document.getElementById('out_loanAmount').textContent = formatAr(loanAmount) +
+      (numberToArabicWords(loanAmount) ? ' ( ' + numberToArabicWords(loanAmount) + ' )' : '');
+
+    document.getElementById('out_months').textContent = formatAr(document.getElementById('months').value);
+
+    const installment = document.getElementById('installment').value;
+    document.getElementById('out_installment').textContent = formatAr(installment) +
+      (numberToArabicWords(installment) ? ' ( ' + numberToArabicWords(installment) + ' )' : '');
+
+    document.getElementById('out_reason').textContent = val('reason');
+    document.getElementById('out_fundSource').textContent = val('fundSource');
+    document.getElementById('out_clientCode').textContent = val('clientCode');
+
+    const principal = document.getElementById('principal').value;
+    document.getElementById('out_principal').textContent = formatAr(principal);
+    document.getElementById('out_principalWords').textContent = numberToArabicWords(principal);
+
+    document.getElementById('out_commission').textContent = document.getElementById('commission').value || '\u00A0';
+    document.getElementById('out_commissionWords').textContent = document.getElementById('commissionWords').textContent;
+
+    document.getElementById('out_total').textContent = document.getElementById('total').value || '\u00A0';
+    document.getElementById('out_totalWords').textContent = document.getElementById('totalWords').textContent;
+
+    const remainingInterest = document.getElementById('remainingInterest').value;
+    document.getElementById('out_remainingInterest').textContent = formatAr(remainingInterest);
+    document.getElementById('out_remainingInterestWords').textContent = document.getElementById('remainingInterestWords').textContent;
+
+    const totalRemaining = document.getElementById('totalRemaining').value;
+    document.getElementById('out_totalRemaining').textContent = totalRemaining
+      ? totalRemaining + (document.getElementById('totalRemainingWords').textContent ? ' ( ' + document.getElementById('totalRemainingWords').textContent + ' )' : '')
+      : '\u00A0';
+
+    document.getElementById('out_witnessName').textContent = val('witnessName');
+    document.getElementById('out_date').textContent = formattedDate();
+
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('formToolbar').style.display = 'none';
+    document.getElementById('reportView').style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+
+  function backToForm() {
+    document.getElementById('reportView').style.display = 'none';
+    document.getElementById('formView').style.display = 'block';
+    document.getElementById('formToolbar').style.display = 'flex';
+    window.scrollTo(0, 0);
+  }
+
+  function saveAsWord() {
+    const sheetHtml = document.querySelector('#reportView .sheet').innerHTML;
+    const wordStyles = `
+      @page Section1 {
+        size: 21cm 29.7cm;
+        margin: 1cm 1.3cm 1cm 1.3cm;
+        mso-header-margin: .3in;
+        mso-footer-margin: .3in;
+      }
+      div.Section1 { page: Section1; }
+      body { font-family: Arial, Tahoma, sans-serif; direction: rtl; font-size: 12px; line-height: 1.3; }
+      .header { border-bottom: 3px double #000; padding-bottom: 4px; margin-bottom: 8px; font-weight: bold; }
+      .header-row { width: 100%; }
+      .header-row span:first-child { float: right; }
+      .header-row span:last-child { float: left; }
+      .header p { margin: 1px 0; font-size: 11px; clear: both; }
+      .header .underline { text-decoration: underline; }
+      h1 { text-align: center; font-size: 16px; text-decoration: underline; margin: 6px 0 8px; }
+      .to-line { font-weight: bold; font-size: 13px; margin-bottom: 4px; }
+      .greeting { font-weight: bold; font-size: 12px; margin-bottom: 5px; }
+      p { margin: 4px 0; font-size: 11.5px; }
+      .fill-value { border-bottom: 1px dotted #000; font-weight: bold; padding: 0 4px; }
+      ul.notes { margin: 5px 0; padding-inline-start: 18px; }
+      ul.notes li { font-size: 11.5px; margin: 3px 0; }
+      .declaration { text-align: center; font-weight: bold; font-size: 12px; margin: 6px 0 3px; }
+      .attachment { font-size: 10.5px; border-top: 2px solid #000; border-bottom: 3px double #000; padding: 3px 0; margin-bottom: 8px; }
+      .office-title { font-weight: bold; font-size: 11.5px; margin-bottom: 5px; }
+      table.office-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 6px; font-size: 10px; }
+      table.office-table td { border: 1px solid #000; padding: 4px 3px; text-align: center; word-wrap: break-word; overflow-wrap: break-word; }
+      .cell-words { display: block; font-size: 8px; font-weight: normal; margin-top: 2px; color: #333; word-wrap: break-word; }
+      .ack { font-size: 10.5px; margin: 6px 0; }
+      .sign-block { margin-top: 3px; }
+      .sign-block p { margin: 2px 0; }
+      .sign-title { font-weight: bold; }
+      .witness-block { margin-top: 14px; padding-top: 6px; border-top: 1px solid #000; }
+      .witness-block p { margin: 3px 0; }
+      .witness-block .underline { text-decoration: underline; font-weight: bold; }
+    `;
+    const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40" dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<title>طلب سداد معجل</title>
+<!--[if gte mso 9]>
+<xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml>
+<![endif]-->
+<style>${wordStyles}</style>
+</head>
+<body>
+<div class="Section1">${sheetHtml}</div>
+</body>
+</html>`;
+
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const clientName = (document.getElementById('out_clientName').textContent || '').trim();
+    const fileName = 'طلب سداد معجل' + (clientName && clientName !== '\u00A0' ? ' - ' + clientName : '') + '.doc';
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /* ===== تعبئة البيانات (سواء جاية من رابط ?params أو من برنامج التصفية مباشرة فى نفس الصفحة) ===== */
+  function applySettlementData(data) {
+    const setVal = (id, value) => {
+      if (value === null || value === undefined || value === '') return;
+      const el = document.getElementById(id);
+      if (el) el.value = value;
+    };
+    setVal('officeName', data.officeName);
+    setVal('clientName', data.clientName);
+    setVal('loanAmount', data.loanAmount);
+    setVal('months', data.months);
+    setVal('installment', data.installment);
+    setVal('principal', data.principal);
+    setVal('remainingInterest', data.remainingInterest);
+
+    // تحديث الكتابة بالحروف تحت خانات المبالغ اللى اتملت
+    if (data.loanAmount !== undefined && data.loanAmount !== null && data.loanAmount !== '') {
+      updateWordHint('loanAmount', 'loanAmountWords');
+    }
+    if (data.installment !== undefined && data.installment !== null && data.installment !== '') {
+      updateWordHint('installment', 'installmentWords');
+    }
+
+    // العمولة (5%) والإجمالى والإجمالى المتبقى بتتحسب تلقائيًا من الأصل (أصول مستقبلية) + الفوائد المتبقية
+    calcTotals();
+  }
+
+  /* دعم إضافى: لو الصفحة اتفتحت لوحدها برابط فيه ?principal=...&loanAmount=... الخ */
+  function prefillFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    if (![...params.keys()].length) return;
+    applySettlementData({
+      officeName: params.get('officeName'),
+      clientName: params.get('clientName'),
+      loanAmount: params.get('loanAmount'),
+      months: params.get('months'),
+      installment: params.get('installment'),
+      principal: params.get('principal'),
+      remainingInterest: params.get('remainingInterest'),
+    });
+  }
+  prefillFromUrl();
+
+  /* طباعة قسم طلب السداد المعجل بس، من غير باقي محتوى الصفحة (لو الاتنين فى نفس الصفحة) */
+  function printSettlementOnly() {
+    document.body.classList.add('printing-settlement');
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing-settlement'), 500);
+  }
+
+  function closeSettlementSection() {
+    const sec = document.getElementById('settlementSection');
+    if (sec) sec.style.display = 'none';
+  }
+</script>
+
+
+</div>
+
+<script>
+const today = new Date();
+document.getElementById('currentDateDisplay').innerText =
+    "تاريخ التقرير: " + today.toLocaleDateString('ar-EG', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+/* ===== تحليل سطر ===== */
+function parseLine(line) {
+    if (!line.trim()) return null;
+    const p = line.trim().split(/\s+/);
+    if (p.length < 9) return null;
+    if (!/^\d+$/.test(p[0])) return null;
+    if (!/^\d{4}\/\d{2}\/\d{2}$/.test(p[1])) return null;
+    const dp = p[1].split('/');
+    const jsDate = new Date(+dp[0], +dp[1]-1, +dp[2]);
+    const principal = parseFloat(p[2].replace(/,/g,'')) || 0;
+    const fees      = parseFloat(p[3].replace(/,/g,'')) || 0;
+    const totalDue  = parseFloat(p[4].replace(/,/g,'')) || 0;
+    const paid      = parseFloat(p[7].replace(/,/g,'')) || 0;
+    const delayDays = parseInt(p[p.length-1]) || 0;
+    const penPerDay = delayDays > 0 ? totalDue * 0.01 : 0;
+    const penalty   = Math.min(penPerDay * delayDays, fees);
+    return { m:p[0], date:p[1], jsDate, principal, fees, totalDue, paid, delayDays, penalty, statusTxt:p[8]||'' };
+}
+
+/* ===== محاولة استرجاع سطر "مقلوب" (ترتيب أعمدته اختلط) بدل تجاهله بالكامل =====
+   الطريقة: نصنّف كل رمز فى السطر حسب شكله (تاريخ / رقم مالى بفاصلة عشرية / كلمة حالة / رقم صحيح / نص)
+   من غير الاعتماد على موضعه، وبعدين نتأكد رياضيًا (أصل + مصاريف = إجمالى) قبل ما نقبل النتيجة.
+   ده أسلوب تقريبى (heuristic) — لو مش قادر يتأكد بثقة، بيرجع null وتفضل السياسة الآمنة (تجاهل + تنبيه). */
+function tryRecoverGarbledLine(line) {
+    const tokens = line.trim().split(/\s+/);
+    if (tokens.length < 9) return null;
+
+    const dateRe   = /^\d{4}\/\d{2}\/\d{2}$/;
+    const moneyRe  = /^-?[\d,]+\.\d{2}$/;
+    const intRe    = /^-?\d+$/;
+    const STATUS_WORDS = ['مسدد', 'متأخر', 'مبكر', 'يستحق'];
+
+    const dates = [], moneys = [], statusParts = [], intTokens = [];
+
+    for (const t of tokens) {
+        if (dateRe.test(t)) dates.push(t);
+        else if (moneyRe.test(t)) moneys.push(parseFloat(t.replace(/,/g, '')));
+        else if (STATUS_WORDS.some(w => t.includes(w))) statusParts.push(t);
+        else if (intRe.test(t)) intTokens.push(t);
+        // أى حاجة تانية (اسم قناة السداد، فراغات..) بنتجاهلها هنا عمدًا
+    }
+
+    // شروط الحد الأدنى للثقة: محتاجين 6 قيم مالية (3 أصل التزام + 3 مدفوع)، تاريخ واحد ع الأقل،
+    // كلمة حالة واحدة ع الأقل، ورقمين صحيحين ع الأقل (م + أيام التأخير)
+    if (moneys.length !== 6) return null;
+    if (dates.length < 1) return null;
+    if (statusParts.length < 1) return null;
+    if (intTokens.length < 2) return null;
+
+    // نحاول نلاقى تقسيمة لـ6 القيم لمجموعتين كل مجموعة فيها قيمة = مجموع القيمتين التانيين (أصل+مصاريف=إجمالى)
+    const eps = 0.5;
+    function combos3(n) {
+        const res = [];
+        for (let i = 0; i < n; i++)
+            for (let j = i + 1; j < n; j++)
+                for (let k = j + 1; k < n; k++)
+                    res.push([i, j, k]);
+        return res;
+    }
+    function findTotalIndex(idxs) {
+        const [a, b, c] = idxs;
+        const va = moneys[a], vb = moneys[b], vc = moneys[c];
+        if (Math.abs(va - (vb + vc)) < eps) return { total: a, others: [b, c] };
+        if (Math.abs(vb - (va + vc)) < eps) return { total: b, others: [a, c] };
+        if (Math.abs(vc - (va + vb)) < eps) return { total: c, others: [a, b] };
+        return null;
+    }
+
+    let match = null;
+    const all = [0, 1, 2, 3, 4, 5];
+    for (const g1 of combos3(6)) {
+        const g2 = all.filter(i => !g1.includes(i));
+        const r1 = findTotalIndex(g1);
+        if (!r1) continue;
+        const r2 = findTotalIndex(g2);
+        if (!r2) continue;
+        match = { r1, r2 };
+        break;
+    }
+    if (!match) return null; // مش قادرين نتأكد رياضيًا — أرفض الاسترجاع، أسلم نتجاهل السطر
+
+    const totalDue  = moneys[match.r1.total];
+    const paidTotal = moneys[match.r2.total];
+    const [oi1, oi2] = match.r1.others;
+    // فرضية: الأصل أكبر من المصاريف عادة فى هذا النوع من التمويل (تقريبى، لازم تُراجع)
+    const va = moneys[oi1], vb = moneys[oi2];
+    const principal = Math.max(va, vb);
+    const fees = Math.min(va, vb);
+
+    const dueDate = dates[0];
+    const dp = dueDate.split('/');
+    const jsDate = new Date(+dp[0], +dp[1] - 1, +dp[2]);
+    const statusTxt = statusParts.join(' ');
+
+    // بافتراض إن آخر رقم صحيح فى السطر هو "م" (زى الوضع الطبيعى) والباقى قبله أيام التأخير
+    const m = intTokens[intTokens.length - 1];
+    const delayDays = intTokens.length >= 2 ? (parseInt(intTokens[0], 10) || 0) : 0;
+
+    const penPerDay = delayDays > 0 ? totalDue * 0.01 : 0;
+    const penalty = Math.min(penPerDay * delayDays, fees);
+
+    return {
+        m, date: dueDate, jsDate,
+        principal, fees, totalDue, paid: paidTotal,
+        delayDays, penalty, statusTxt,
+        recovered: true
+    };
+}
+
+/* ===== نسخ "معكوس بالكامل" (bug معروف فى بعض متصفحات ويندوز 10 مع جداول RTL:
+   بيرجع كل كلمات السطر بترتيب معكوس تمامًا من الآخر للأول) =====
+   بدل التخمين الرياضى العام، هنا بنعتمد على إن آخر 11 عمود دايمًا بترتيب ثابت
+   (من غير ما نحتاج نعرف طول اسم "قناة السداد" لأنه بطول متغير فى نص السطر
+   ومش مؤثر على العد من آخر السطر).
+   الترتيب المتوقع (بعداد من آخر السطر):
+     آخر عمود        = م (رقم القسط)
+     قبل الأخير       = تاريخ الاستحقاق
+     3 قبله          = أصل / مصاريف / الإجمالي (قيمة القسط المقررة)
+     3 قبلهم         = أصل / مصاريف / الإجمالي "المسدد" فعليًا (بنستخدم بس الإجمالي = المسدد)
+     2 قبلهم         = حالة القسط (كلمتين، مثال: "مبكر مسدد" / "لم يستحق")
+     وأول عمود فى السطر = أيام تأخير (سالب = مدفوع مبكر، صفر = لسه ما استحقش) */
+function parseReversedLine(line) {
+    const t = line.trim().split(/\s+/);
+    const n = t.length;
+    if (n < 12) return null;
+
+    const dateRe  = /^\d{4}\/\d{2}\/\d{2}$/;
+    const moneyRe = /^-?[\d,]+\.\d{2}$/;
+    const intRe   = /^-?\d+$/;
+
+    const serial          = t[n-1];
+    const dueDateTok       = t[n-2];
+    const principalTok     = t[n-3];
+    const feesTok          = t[n-4];
+    const totalTok         = t[n-5];
+    const paidPrincipalTok = t[n-6];
+    const paidFeesTok      = t[n-7];
+    const paidTotalTok     = t[n-8];
+    const statusA          = t[n-9];
+    const statusB          = t[n-10];
+    const delayTok         = t[0];
+
+    if (!intRe.test(serial)) return null;
+    if (!dateRe.test(dueDateTok)) return null;
+    if (![principalTok, feesTok, totalTok, paidPrincipalTok, paidFeesTok, paidTotalTok].every(x => moneyRe.test(x))) return null;
+    if (!intRe.test(delayTok)) return null;
+
+    const dp = dueDateTok.split('/');
+    const jsDate = new Date(+dp[0], +dp[1]-1, +dp[2]);
+    const principal = parseFloat(principalTok.replace(/,/g,'')) || 0;
+    const fees      = parseFloat(feesTok.replace(/,/g,''))      || 0;
+    const totalDue  = parseFloat(totalTok.replace(/,/g,''))     || 0;
+    const paid      = parseFloat(paidTotalTok.replace(/,/g,'')) || 0;
+    const delayDays = parseInt(delayTok, 10) || 0;
+    const penPerDay = delayDays > 0 ? totalDue * 0.01 : 0;
+    const penalty   = Math.min(penPerDay * delayDays, fees);
+    const statusTxt = (statusB || '') + ' ' + (statusA || '');
+
+    return { m: serial, date: dueDateTok, jsDate, principal, fees, totalDue, paid, delayDays, penalty, statusTxt, reversedFormat: true };
+}
+
+/* ===== تحديد نوع السطر بناءً على التاريخ فقط =====
+   - jsDate < today  → PAST (مسدد) أو OVERDUE (غير مسدد)
+   - أول قسط jsDate >= today → CURRENT (الدور عليه)
+   - ما بعده → FUTURE
+   ملحوظة: تحديد "الاستحقاق" هنا بالتاريخ بس، حتى لو القسط ده كان مدفوع مقدمًا.
+   استبعاد القيمة المدفوعة من حساب مبلغ التصفية بيتم بعد كده فى computeLiquidation. */
+let _currentAssigned = false;
+function resetFlag() { _currentAssigned = false; }
+function getRowType(row) {
+    if (row.jsDate < today) {
+        return row.paid < row.totalDue ? 'OVERDUE' : 'PAST';
+    }
+    if (!_currentAssigned) { _currentAssigned = true; return 'CURRENT'; }
+    return 'FUTURE';
+}
+
+/* ===== badge ===== */
+function badge(txt) {
+    if (!txt) return txt;
+    if (txt.includes('مبكر'))  return '<span class="badge badge-paid-early">'+txt+'</span>';
+    if (txt.includes('متأخر')) return '<span class="badge badge-paid-late">'+txt+'</span>';
+    if (txt.includes('يستحق')) return '<span class="badge badge-not-due">'+txt+'</span>';
+    return '<span class="badge">'+txt+'</span>';
+}
+
+/* ===== الدالة الرئيسية ===== */
+let parsedRows = [];
+let currentMode = 'client';
+let lastClientS = null; /* نتيجة تصفية العميل (تُستخدم دايمًا لزرار طلب السداد المعجل) */
+
+const MODE_NOTES = {
+    client:    'يشمل عمولة السداد المعجل (5%) والغرامات — هو المبلغ اللى العميل يدفعه فعليًا.',
+    insurance: 'بدون عمولة 5% وبدون غرامات — المبلغ المطلوب من شركة التأمين فقط (الأصول + الفوائد المستحقة).'
+};
+
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('tabClient').classList.toggle('active-client', mode === 'client');
+    document.getElementById('tabInsurance').classList.toggle('active-insurance', mode === 'insurance');
+    document.getElementById('modeNote').textContent = MODE_NOTES[mode];
+    if (parsedRows.length) renderAll(mode);
+}
+setMode('client');
+
+function processAll() {
+    const input = document.getElementById('dataInput').value.trim();
+    if (!input) { alert('الرجاء لصق البيانات أولاً'); return; }
+    resetFlag();
+    const lines = input.split('\n');
+    const rows = [];
+    const skippedLineNumbers = [];
+    const recoveredLineNumbers = [];
+    const reversedLineNumbers = [];
+    lines.forEach((line, i) => {
+        if (!line.trim()) return; // سطر فاضى، تجاهله من غير تنبيه
+        const parsed = parseLine(line);
+        if (parsed) { rows.push(parsed); return; }
+        const reversed = parseReversedLine(line);
+        if (reversed) { rows.push(reversed); reversedLineNumbers.push(i + 1); return; }
+        const recovered = tryRecoverGarbledLine(line);
+        if (recovered) { rows.push(recovered); recoveredLineNumbers.push(i + 1); return; }
+        skippedLineNumbers.push(i + 1);
+    });
+    if (!rows.length) { alert('لم يتم التعرف على بيانات صحيحة'); return; }
+    rows.forEach(r => { r.rowType = getRowType(r); });
+    parsedRows = rows;
+    renderAll(currentMode);
+
+    const warnBox = document.getElementById('skipWarning');
+    const msgs = [];
+    if (reversedLineNumbers.length) {
+        msgs.push('🔁 تم التعرف على ' + reversedLineNumbers.length + ' سطر بشكل النسخ المعكوس (شائع على بعض الأجهزة/المتصفحات) وتحليلها بدقة كاملة تلقائيًا (رقم السطر: ' +
+            reversedLineNumbers.join('، ') + ').');
+    }
+    if (recoveredLineNumbers.length) {
+        msgs.push('🔧 تم استرجاع ' + recoveredLineNumbers.length + ' سطر كان ترتيب أعمدته مختلط بشكل مختلف (رقم السطر: ' +
+            recoveredLineNumbers.join('، ') + ') والحساب المبدئى منطقى، لكنها عملية تقريبية — يُرجى مراجعة هذه الصفوف بعنايه فى الجدول.');
+    }
+    if (skippedLineNumbers.length) {
+        msgs.push('⚠️ تعذّرت قراءة ' + skippedLineNumbers.length + ' سطر (مقلوب/ناقص/مش بالشكل المتوقع) ولم نقدر نتأكد من ترتيب أعمدته، فتم تجاهله من الحساب — رقم السطر: ' +
+            skippedLineNumbers.join('، ') + '. يفضّل تراجع السطور دى يدويًا فى برنامج المحصل.');
+    }
+    if (msgs.length) {
+        warnBox.style.display = 'block';
+        warnBox.innerHTML = msgs.join('<br>');
+    } else {
+        warnBox.style.display = 'none';
+        warnBox.textContent = '';
+    }
+}
+
+/* ===== حساب التصفية لوضع معيّن (عميل / شركة تأمين) بدون إعادة تحليل النص ===== */
+function computeLiquidation(rows, mode) {
+    const startIdx = rows.findIndex(r => r.rowType !== 'PAST');
+    const isInsurance = mode === 'insurance';
+
+    const tot = {principal:0, fees:0, totalDue:0, paid:0, penalty:0};
+    rows.forEach(r => {
+        tot.principal += r.principal; tot.fees += r.fees; tot.totalDue += r.totalDue; tot.paid += r.paid;
+        tot.penalty += isInsurance ? 0 : r.penalty;
+    });
+
+    const rowsCalc = [];
+    let accPen = 0;
+    let S = null;
+
+    rows.forEach((row, idx) => {
+        const effPenalty = isInsurance ? 0 : row.penalty;
+        accPen += effPenalty;
+
+        let F=null, G=null, H=null, I=null, fprin=0, overdue=0, waivedFees=0;
+        if (idx >= startIdx) {
+            /* الجزء المتبقى (الغير مسدد) من القسط الحالى نفسه — لو اتسدد كله أو جزء منه مبكرًا، مبيتحسبش تانى */
+            const currentRemaining = Math.max(row.totalDue - row.paid, 0);
+            F = currentRemaining;
+
+            /* نفس الفكرة للأقساط المستقبلية: لو أى قسط مستقبلى اتسدد (كله أو جزء) مبكرًا، بنطرح الجزء المسدد
+               ده ونحسب بس الباقى (نسبيًا بين الأصل والمصاريف) */
+            for (let i=idx+1; i<rows.length; i++) {
+                const r = rows[i];
+                const remaining = Math.max(r.totalDue - r.paid, 0);
+                const ratio = r.totalDue > 0 ? remaining / r.totalDue : 0;
+                const remPrincipal = r.principal * ratio;
+                const remFees = r.fees * ratio;
+                F += remPrincipal;
+                fprin += remPrincipal;
+                waivedFees += remFees;
+            }
+            for (let j=0; j<idx; j++) {
+                const d = rows[j].totalDue - rows[j].paid;
+                if (d>0) { F += d; overdue += d; }
+            }
+            G = isInsurance ? 0 : Math.round(fprin * 0.05);
+            H = Math.round(F + G);
+            I = Math.round(H + accPen);
+
+            if (row.rowType === 'CURRENT' && S === null) {
+                S = { I, H, G, F: Math.round(F),
+                      penalties: Math.round(accPen),
+                      overdue:   Math.round(overdue),
+                      current:   Math.round(currentRemaining),
+                      fprin:     Math.round(fprin),
+                      waivedFees: Math.round(waivedFees) };
+            }
+        }
+        rowsCalc.push({ row, effPenalty, F, G, H, I });
+    });
+
+    return { tot, rowsCalc, S, startIdx };
+}
+
+/* ===== عرض النتائج ===== */
+function renderAll(mode) {
+    const rows = parsedRows;
+    const { tot, rowsCalc, S } = computeLiquidation(rows, mode);
+
+    /* نحتفظ دايمًا بنتيجة تصفية العميل (مهما كان الوضع المعروض حاليًا) عشان زرار طلب السداد المعجل */
+    lastClientS = mode === 'client' ? S : computeLiquidation(rows, 'client').S;
+
+    const isInsurance = mode === 'insurance';
+
+    let html = '<table id="resultTable"><thead><tr>'
+        +'<th colspan="9">البيانات الأساسية والغرامات</th>'
+        +'<th colspan="5" class="orange-header">منطقة حساب التصفية '+(isInsurance?'(شركة التأمين)':'(العميل)')+'</th>'
+        +'</tr><tr>'
+        +'<th>م</th><th>تاريخ الاستحقاق</th><th>أصل</th><th>مصاريف</th><th>الإجمالي</th>'
+        +'<th>المسدد</th><th>أيام تأخير</th><th class="col-penalty">غرامة</th><th>حالة القسط</th>'
+        +'<th class="orange-header">حالة السطر</th>'
+        +'<th class="orange-header">الرصيد (F)</th>'
+        +'<th class="orange-header">'+(isInsurance?'عمولة (غير مطبقة)':'عمولة 5% (G)')+'</th>'
+        +'<th class="orange-header">المطلوب قبل الغرامات (H)</th>'
+        +'<th class="orange-header">'+(isInsurance?'الصافي (بدون غرامات)':'الصافي شامل الغرامات (I)')+'</th>'
+        +'</tr></thead><tbody>';
+
+    const LABELS = {
+        PAST:    { txt:'سابق (مسدد)',        td:'status-past',    tsf:'tsf-past'    },
+        OVERDUE: { txt:'متأخر غير مسدد',     td:'status-overdue', tsf:'tsf-overdue' },
+        CURRENT: { txt:'استحقاق حالي',       td:'status-current', tsf:'tsf-current' },
+        FUTURE:  { txt:'تصفية مستقبلي',      td:'status-future',  tsf:'tsf-future'  },
+    };
+
+    rowsCalc.forEach(({row, effPenalty, F, G, H, I}) => {
+        const {txt, td, tsf} = LABELS[row.rowType];
+        const Ft = F!==null ? Math.round(F).toLocaleString('en-US') : '-';
+        const Gt = G!==null ? G.toLocaleString('en-US') : '-';
+        const Ht = H!==null ? H.toLocaleString('en-US') : '-';
+        const It = I!==null ? I.toLocaleString('en-US') : '-';
+
+        html += '<tr>'
+            +'<td class="col-index">'+row.m+'</td>'
+            +'<td>'+row.date+'</td>'
+            +'<td>'+row.principal.toLocaleString('en-US')+'</td>'
+            +'<td>'+row.fees.toLocaleString('en-US')+'</td>'
+            +'<td>'+row.totalDue.toLocaleString('en-US')+'</td>'
+            +'<td>'+row.paid.toLocaleString('en-US')+'</td>'
+            +'<td>'+(row.delayDays>0?row.delayDays:'-')+'</td>'
+            +'<td class="col-penalty">'+(effPenalty>0?effPenalty.toLocaleString('en-US'):'-')+'</td>'
+            +'<td>'+badge(row.statusTxt)+'</td>'
+            +'<td class="'+td+'">'+txt+'</td>'
+            +'<td class="'+tsf+'">'+Ft+'</td>'
+            +'<td class="'+tsf+'">'+Gt+'</td>'
+            +'<td class="'+tsf+'">'+Ht+'</td>'
+            +'<td class="'+tsf+'">'+It+'</td>'
+            +'</tr>';
+    });
+
+    /* ---- صف الإجماليات ---- */
+    const totalOD = Math.round(tot.totalDue - tot.paid + tot.penalty);
+    html += '<tr class="total-row">'
+        +'<td colspan="2">إجمالي المسحوبات</td>'
+        +'<td>'+Math.round(tot.principal).toLocaleString('en-US')+'</td>'
+        +'<td>'+Math.round(tot.fees).toLocaleString('en-US')+'</td>'
+        +'<td>'+Math.round(tot.totalDue).toLocaleString('en-US')+'</td>'
+        +'<td>'+Math.round(tot.paid).toLocaleString('en-US')+'</td>'
+        +'<td>-</td>'
+        +'<td class="col-penalty">'+Math.round(tot.penalty).toLocaleString('en-US')+'</td>'
+        +'<td colspan="2">'+(isInsurance?'إجمالي المتأخرات الفعلي (بدون غرامات):':'إجمالي المتأخرات الفعلي (شامل الغرامات):')+'</td>'
+        +'<td colspan="4" style="font-size:15px;font-weight:bold;color:#7b0000;">'+totalOD.toLocaleString('en-US')+' ج.م</td>'
+        +'</tr>';
+
+    if (S !== null) {
+        /* ---- صف التفصيل ---- */
+        const hasOD = S.overdue > 0;
+        let cells = '';
+        if (hasOD) {
+            cells += '<td class="bd-sep" style="width:3%"></td>'
+                +'<td style="width:14%">'
+                +'<div class="bd-label" style="color:#e74c3c;">متأخرات غير مسددة</div>'
+                +'<div class="bd-val" style="color:#ff6b6b;">'+S.overdue.toLocaleString('en-US')+' ج.م</div>'
+                +'</td>'
+                +'<td class="bd-sep">+</td>';
+        }
+        cells += '<td style="width:14%">'
+            +'<div class="bd-label" style="color:#f39c12;">قسط الاستحقاق الحالي</div>'
+            +'<div class="bd-val" style="color:#f39c12;">'+S.current.toLocaleString('en-US')+' ج.م</div>'
+            +'</td>'
+            +'<td class="bd-sep">+</td>'
+            +'<td style="width:14%">'
+            +'<div class="bd-label" style="color:#5dade2;">أصول مستقبلية</div>'
+            +'<div class="bd-val" style="color:#5dade2;">'+S.fprin.toLocaleString('en-US')+' ج.م</div>'
+            +'</td>';
+
+        if (!isInsurance) {
+            cells += '<td class="bd-sep">+</td>'
+                +'<td style="width:14%">'
+                +'<div class="bd-label" style="color:#2ecc71;">عمولة 5% (على الأصول)</div>'
+                +'<div class="bd-val" style="color:#2ecc71;">'+S.G.toLocaleString('en-US')+' ج.م</div>'
+                +'</td>'
+                +'<td class="bd-sep">+</td>'
+                +'<td style="width:14%">'
+                +'<div class="bd-label" style="color:#e74c3c;">إجمالي الغرامات</div>'
+                +'<div class="bd-val" style="color:#ff6b6b;">'+S.penalties.toLocaleString('en-US')+' ج.م</div>'
+                +'</td>';
+        }
+
+        cells += '<td class="bd-sep">=</td>'
+            +'<td class="bd-total-cell" style="width:16%">'
+            +'<div class="bd-label" style="color:#f1c40f;">إجمالي مبلغ التصفية</div>'
+            +'<div class="bd-val">'+S.I.toLocaleString('en-US')+' ج.م</div>'
+            +'</td>';
+
+        html += '<tr><td colspan="14" style="padding:0;">'
+            +'<table class="breakdown-inner"><tr>'
+            +'<td style="padding:8px 15px;color:#bdc3c7;font-size:12px;white-space:nowrap;width:auto;">'
+            +'تفصيل مبلغ التصفية</td>'
+            +cells
+            +'</tr></table>'
+            +'</td></tr>';
+
+        if (!isInsurance && S.waivedFees > 0) {
+            html += '<tr><td colspan="14" style="padding:6px 15px;background:#fdf6e3;color:#7d6608;font-size:12.5px;text-align:right;">'
+                +'&#x1F4A1; قيمة الفوائد المتبقية المخصومة على العميل نتيجة السداد المعجل (فوائد الأقساط المستقبلية التى لن تُحصَّل): <strong>'
+                +S.waivedFees.toLocaleString('en-US')+' ج.م</strong></td></tr>';
+        }
+
+        html += '<tr class="final-row">'
+            +'<td colspan="9" style="text-align:right;padding-right:20px;font-size:14px;">'
+            +(isInsurance ? 'صافي المبلغ المطلوب من شركة التأمين:' : 'صافي المبلغ المطلوب لتصفية القرض بالكامل:')
+            +'</td>'
+            +'<td colspan="5" class="final-val">'+S.I.toLocaleString('en-US')+' جنيه مصري</td>'
+            +'</tr>';
+    } else {
+        html += '<tr class="final-row"><td colspan="14" style="font-size:18px;color:#2ecc71;font-weight:bold;padding:16px;">'
+            +'جميع الأقساط المستحقة مسددة — لا توجد تصفية مطلوبة'
+            +'</td></tr>';
+    }
+
+    html += '</tbody></table>';
+    document.getElementById('tableOutput').innerHTML = html;
+
+    /* ---- زرار طلب السداد المعجل: يظهر فقط لو فيه تصفية فعلية للعميل ---- */
+    document.getElementById('settlementBar').style.display = (lastClientS !== null) ? 'flex' : 'none';
+
+    /* ---- بطاقات الإحصاء ---- */
+    const pastC    = rows.filter(r=>r.rowType==='PAST').length;
+    const overdueC = rows.filter(r=>r.rowType==='OVERDUE').length;
+    const currentC = rows.filter(r=>r.rowType==='CURRENT').length;
+    const futureC  = rows.filter(r=>r.rowType==='FUTURE').length;
+
+    document.getElementById('statsArea').innerHTML =
+        '<div class="stats-grid">'
+        +'<div class="stat-card card-blue"><span class="val">'+rows.length+'</span><span class="lbl">إجمالي الأقساط</span></div>'
+        +'<div class="stat-card card-green"><span class="val">'+pastC+'</span><span class="lbl">سابقة مسددة</span></div>'
+        +'<div class="stat-card card-red"><span class="val">'+overdueC+'</span><span class="lbl">متأخرة غير مسددة</span></div>'
+        +'<div class="stat-card card-orange"><span class="val">'+currentC+'</span><span class="lbl">استحقاق الشهر الحالي</span></div>'
+        +'<div class="stat-card card-purple"><span class="val">'+futureC+'</span><span class="lbl">أقساط مستقبلية</span></div>'
+        +'<div class="stat-card card-gold"><span class="val">'+Math.round(tot.penalty).toLocaleString('en-US')+'</span><span class="lbl">إجمالي الغرامات (ج.م)</span></div>'
+        +'</div>'
+        +'<div class="legend"><strong>دليل الألوان:</strong>'
+        +'<div class="legend-item"><div class="legend-box" style="background:#f5f6fa;border:1px solid #ccc"></div> سابق مسدد</div>'
+        +'<div class="legend-item"><div class="legend-box" style="background:#fdecea;border:1px solid #e74c3c"></div> متأخر غير مسدد</div>'
+        +'<div class="legend-item"><div class="legend-box" style="background:#fff3e0;border:2px solid #e67e22"></div> استحقاق حالي</div>'
+        +'<div class="legend-item"><div class="legend-box" style="background:#e8f0fe;border:1px solid #3498db"></div> مستقبلي</div>'
+        +'<div class="legend-item"><div class="legend-box" style="background:#fee2e2"></div> غرامة تأخير</div>'
+        +'</div>';
+}
+
+/* ===== فتح بيانات طلب السداد المعجل (اختيارى) =====
+   بيفتح القسم تحت فى نفس الصفحة وياخد الأرقام مباشرة من نفس الصفحة، من غير ما ينقل لصفحة تانية. */
+function openSettlementRequest() {
+    if (!lastClientS) { alert('محتاج تحلل بيانات فيها تصفية مطلوبة الأول'); return; }
+    const S = lastClientS;
+    const section = document.getElementById('settlementSection');
+    section.style.display = 'block';
+
+    /* مبلغ التمويل الذى تم الحصول عليه = إجمالى عمود الأصل لكل الأقساط */
+    const loanAmountSum = parsedRows.reduce((sum, r) => sum + r.principal, 0);
+
+    /* مدة السداد بالشهور = آخر رقم فى عمود "م" (عدد الأقساط الكلى) */
+    const lastM = parsedRows.length ? parseInt(parsedRows[parsedRows.length - 1].m, 10) : NaN;
+
+    /* قيمة القسط الشهرى = قيمة واحدة من عمود الإجمالي (مش مجموع العمود) */
+    const installmentSample = parsedRows.length ? Math.round(parsedRows[0].totalDue) : '';
+
+    if (typeof applySettlementData === 'function') {
+        applySettlementData({
+            loanAmount: Math.round(loanAmountSum),
+            months: isNaN(lastM) ? '' : lastM,
+            installment: installmentSample,
+            /* المبلغ المطلوب سداده (اصل) = الأصول المستقبلية فقط */
+            principal: S.fprin,
+            remainingInterest: S.waivedFees
+            /* ملحوظة: الغرامة مش بتتبعت لأن نموذج طلب السداد المعجل مفهوش خانة غرامة */
+        });
+    }
+    section.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function exportToExcel() {
+    const t = document.getElementById('resultTable');
+    if (!t) { alert('لا توجد بيانات للتصدير'); return; }
+    const wb = XLSX.utils.table_to_book(t, {sheet:'تقرير التصفية'});
+    XLSX.writeFile(wb, 'تقرير_تصفية_القرض.xlsx');
+}
+
+function clearAll() {
+    document.getElementById('dataInput').value = '';
+    document.getElementById('tableOutput').innerHTML = '';
+    document.getElementById('statsArea').innerHTML = '';
+    document.getElementById('settlementBar').style.display = 'none';
+    document.getElementById('skipWarning').style.display = 'none';
+    document.getElementById('skipWarning').textContent = '';
+    parsedRows = [];
+    lastClientS = null;
+}
+</script>
+</body>
+</html>
