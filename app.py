@@ -7,8 +7,9 @@
 التصفية وهو متعبّي بالأقساط تلقائي.
 
 التشغيل محليًا:  streamlit run app.py
-الملفات المطلوبة جنب app.py: core.py + مساعد_تصفية_العملاء_من_برنامج_المحصل.html
+الملفات المطلوبة جنب app.py: core.py + logo.png + مساعد_تصفية_العملاء_من_برنامج_المحصل.html
 """
+import base64
 import io
 from pathlib import Path
 
@@ -16,46 +17,150 @@ import streamlit as st
 
 import core
 
-st.set_page_config(page_title="مساعد حالة العميل", page_icon="📄", layout="centered")
+HERE = Path(__file__).parent
+LIQ_HTML_PATH = HERE / "مساعد_تصفية_العملاء_من_برنامج_المحصل.html"
+LOGO_PATH = HERE / "logo.png"
 
-# اتجاه الصفحة من اليمين لليسار
+BRAND_RED = "#E30613"
+BRAND_RED_DARK = "#B8050F"
+BRAND_PINK = "#FBEAEC"
+
+
+def open_in_new_tab_button(label, html_content, key):
+    """
+    زرار حقيقي بيفتح صفحة HTML (مبنية في الذاكرة) في تبويب جديد في متصفح المستخدم،
+    بدل ما تتحط جوه إطار صغير في نفس الصفحة. المتصفحات بتمنع فتح تبويب تلقائي من غير
+    ضغطة مستخدم، فالفتح لازم يحصل داخل onclick نفسه (مش بعد استدعاء بايثون).
+    """
+    b64 = base64.b64encode(html_content.encode("utf-8")).decode("ascii")
+    st.components.v1.html(
+        f"""
+        <button id="{key}" style="
+            background:linear-gradient(135deg,{BRAND_RED},{BRAND_RED_DARK}); color:white; border:none;
+            border-radius:10px; padding:12px 18px; font-size:15px; font-weight:bold; cursor:pointer;
+            width:100%; box-shadow:0 2px 6px rgba(227,6,19,0.35); font-family:inherit;
+        ">{label}</button>
+        <script>
+        document.getElementById("{key}").onclick = function () {{
+            var bytes = Uint8Array.from(atob("{b64}"), c => c.charCodeAt(0));
+            var html = new TextDecoder("utf-8").decode(bytes);
+            var blob = new Blob([html], {{type: "text/html"}});
+            var url = URL.createObjectURL(blob);
+            window.open(url, "_blank");
+        }};
+        </script>
+        """,
+        height=58,
+    )
+
+
+st.set_page_config(page_title="مساعد حالة العميل | Caritas Egypt", page_icon="📄", layout="centered")
+
+# ---------- تنسيق عام: اتجاه، ألوان، أيقونات ----------
 st.markdown(
-    "<style>html, body, [class*='css'] { direction: rtl; text-align: right; }</style>",
+    f"""
+    <style>
+    html, body, [class*="css"] {{ direction: rtl; text-align: right; }}
+    .block-container {{ padding-top: 1.4rem; }}
+
+    .brand-header {{
+        display: flex; align-items: center; gap: 16px;
+        background: linear-gradient(135deg, {BRAND_PINK}, #ffffff);
+        border: 1px solid #f3d3d7; border-radius: 16px;
+        padding: 16px 22px; margin-bottom: 18px;
+    }}
+    .brand-header h1 {{ margin: 0; font-size: 1.5rem; color: {BRAND_RED_DARK}; }}
+    .brand-header p {{ margin: 2px 0 0; color: #6b6b6b; font-size: 0.92rem; }}
+
+    div[data-testid="stMetric"] {{
+        background: {BRAND_PINK}; border-radius: 12px; padding: 10px 6px;
+        border: 1px solid #f3d3d7;
+    }}
+    div[data-testid="stMetricLabel"] {{ color: {BRAND_RED_DARK}; }}
+
+    .stTabs [data-baseweb="tab"] {{ font-weight: 700; font-size: 1rem; }}
+    .stTabs [aria-selected="true"] {{ color: {BRAND_RED_DARK} !important; }}
+
+    .warn-banner {{
+        background: #FFF6E5; border: 1px solid #F2C866; color: #7A5200;
+        border-radius: 10px; padding: 10px 16px; margin: 16px 0; font-weight: 600; text-align: center;
+    }}
+    .app-footer {{
+        text-align: center; color: #9a9a9a; font-size: 0.82rem; margin-top: 34px;
+        padding-top: 14px; border-top: 1px solid #eee;
+    }}
+    </style>
+    """,
     unsafe_allow_html=True,
 )
 
-LIQ_HTML_PATH = Path(__file__).parent / "مساعد_تصفية_العملاء_من_برنامج_المحصل.html"
+# ---------- الهيدر: اللوجو + العنوان ----------
+h1, h2 = st.columns([1, 5])
+with h1:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), use_container_width=True)
+with h2:
+    st.markdown(
+        """
+        <div style="padding-top:6px;">
+            <h1 style="margin:0; color:#B8050F;">📄 مساعد حالة العميل</h1>
+            <p style="margin:2px 0 0; color:#6b6b6b;">تحويل تقرير "حالة العميل" لإكسيل، وتجهيز مساعد التصفية تلقائيًا</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-st.title("📄 مساعد حالة العميل")
-st.caption("ارفع تقرير \"حالة العميل\" (PDF أو ASPX) وحوّله لإكسيل، أو افتح مساعد التصفية بالأقساط جاهزة.")
+st.markdown(
+    '<div class="warn-banner">⚠️ النظام تحت الاختبار والتعديل.. يرجى مراجعة النتائج بعناية قبل الاعتماد عليها.</div>',
+    unsafe_allow_html=True,
+)
 
-uploaded = st.file_uploader("اختار ملف التقرير", type=["pdf", "aspx"])
+# ---------- شرح طريقة الاستخدام ----------
+with st.expander("ℹ️ طريقة استخدام البرنامج", expanded=False):
+    st.markdown(
+        """
+1. 📤 **ارفع ملف التقرير** (PDF أو ASPX) اللي حفظته من صفحة "حالة العميل".
+2. 👀 هتظهر **ملخص سريع** ببيانات العميل، وتقدر تفتح تفاصيل العميل والقرض كاملة لو حبيت.
+3. ⬇️ من تبويب **"تحويل لإكسيل"**: دوس تنزيل، وهتاخد ملف Excel فيه بيانات العميل، القرض، الضامنين، والأقساط.
+4. 🧮 من تبويب **"مساعد التصفية"**: دوس الزرار، وهتتفتحلك صفحة حساب التصفية في تبويب جديد، بالأقساط متعبّية أوتوماتيك.
+5. 🔁 عايز تشتغل على عميل تاني؟ ارفع ملفه من نفس الصفحة وكرر الخطوات.
+        """
+    )
+
+st.divider()
+
+# ---------- رفع الملف ----------
+uploaded = st.file_uploader("📤 اختار ملف التقرير", type=["pdf", "aspx"])
 
 if uploaded is None:
-    st.info("لسه ما رفعتش ملف.")
+    st.info("👆 لسه ما رفعتش ملف.")
+    st.markdown(
+        '<div class="app-footer">Powered by <b>Loans &amp; Economic Empowerment IT Group</b></div>',
+        unsafe_allow_html=True,
+    )
     st.stop()
 
 # ---------- قراءة الملف ----------
 try:
-    with st.spinner("جاري قراءة الملف..."):
+    with st.spinner("⏳ جاري قراءة الملف..."):
         result = core.parse_pdf(io.BytesIO(uploaded.getvalue()))
 except Exception as e:
-    st.error(f"الملف ده مش تقرير سليم: {e}")
+    st.error(f"⚠️ الملف ده مش تقرير سليم: {e}")
     st.stop()
 
 client, loans, guarantors, installments, loan_list, unknown = result
 
 # ---------- ملخص سريع ----------
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("العميل", client.get("الاسم", "—"))
-c2.metric("الكود", client.get("الكود", "—"))
-c3.metric("عدد الأقساط", len([r for r in installments if r[1] != "إجمالي"]))
-c4.metric("عدد الضامنين", len(guarantors))
+c1.metric("👤 العميل", client.get("الاسم", "—"))
+c2.metric("🔢 الكود", client.get("الكود", "—"))
+c3.metric("📅 عدد الأقساط", len([r for r in installments if r[1] != "إجمالي"]))
+c4.metric("🤝 عدد الضامنين", len(guarantors))
 
 if unknown:
-    st.warning("شكل جدول القروض في الملف ده مختلف شوية — اتحفظ في شيت \"غير معروف\" في الإكسيل.")
+    st.warning("⚠️ شكل جدول القروض في الملف ده مختلف شوية — اتحفظ في شيت \"غير معروف\" في الإكسيل.")
 
-with st.expander("عرض بيانات العميل والقرض"):
+with st.expander("🔍 عرض بيانات العميل والقرض"):
     st.write("**بيانات العميل**")
     st.table({"البيان": list(client.keys()), "القيمة": list(client.values())})
     if loans:
@@ -72,7 +177,7 @@ with tab_excel:
     core.write_workbook(result, buf)
     buf.seek(0)
     st.download_button(
-        "تنزيل ملف الإكسيل",
+        "⬇️ تنزيل ملف الإكسيل",
         data=buf,
         file_name=Path(uploaded.name).stem + ".xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -83,13 +188,13 @@ with tab_excel:
 with tab_liq:
     groups = core.installments_by_loan(installments)
     if not groups:
-        st.error("مفيش جدول أقساط في التقرير ده.")
+        st.error("⚠️ مفيش جدول أقساط في التقرير ده.")
     else:
         codes = list(groups)
-        code = codes[0] if len(codes) == 1 else st.selectbox("اختار القرض", codes)
+        code = codes[0] if len(codes) == 1 else st.selectbox("💳 اختار القرض", codes)
         if not LIQ_HTML_PATH.exists():
             st.error(
-                f"مش لاقي صفحة مساعد التصفية ({LIQ_HTML_PATH.name}). "
+                f"⚠️ مش لاقي صفحة مساعد التصفية ({LIQ_HTML_PATH.name}). "
                 "تأكد إنها مرفوعة في نفس مستودع GitHub جنب app.py."
             )
         else:
@@ -97,4 +202,12 @@ with tab_liq:
             page_html = core.build_liquidation_html(
                 template, groups[code], client, source_name=uploaded.name, loan_code=code
             )
-            st.components.v1.html(page_html, height=1400, scrolling=True)
+            st.caption("✅ الأقساط جاهزة ومتعبّية — دوس الزرار يفتح مساعد التصفية في تبويب جديد.")
+            open_in_new_tab_button("🧮 فتح مساعد التصفية في تبويب جديد", page_html, key=f"liq_{code}")
+            st.info("💡 لو المتصفح منع فتح التبويب، دوس على أيقونة \"popup blocked\" جنب شريط العنوان واسمح له.")
+
+# ---------- الفوتر ----------
+st.markdown(
+    '<div class="app-footer">Powered by <b>Loans &amp; Economic Empowerment IT Group</b></div>',
+    unsafe_allow_html=True,
+)
