@@ -7,8 +7,11 @@
 التصفية وهو متعبّي بالأقساط تلقائي.
 
 التشغيل محليًا:  streamlit run app.py
-الملفات المطلوبة جنب app.py: core.py + assets_logo.py + مساعد_تصفية_العملاء_من_برنامج_المحصل.html
-(اللوجو نفسه بقى متضمّن جوه assets_logo.py كنص، مش ملف صورة منفصل، عشان يوصل سليم دايمًا مهما كانت طريقة الرفع على GitHub)
+الملفات المطلوبة جنب app.py: core.py + مساعد_تصفية_العملاء_من_برنامج_المحصل.html
+
+تغيير اللوجو: حط ملف اسمه logo (أي امتداد صورة: png/jpg/jpeg/webp، أي حالة أحرف) في نفس فولدر
+app.py على GitHub، وهيتستخدم تلقائي. لو مفيش ملف زي كده، بيترجع للوجو الافتراضي المدمج
+جوه assets_logo.py (عشان الصفحة متفضلش من غير لوجو خالص لو الملف ضاع أو اتلف أثناء الرفع).
 """
 import base64
 import io
@@ -25,6 +28,30 @@ LIQ_HTML_PATH = HERE / "مساعد_تصفية_العملاء_من_برنامج_�
 BRAND_RED = "#E30613"
 BRAND_RED_DARK = "#B8050F"
 BRAND_PINK = "#FBEAEC"
+
+
+def load_logo():
+    """
+    بيدوّر على ملف صورة اسمه logo (أي حالة أحرف/امتداد شائع) جنب app.py، ولو لقى واحد
+    سليم بيستخدمه. غير كده بيرجع للوجو الافتراضي المدمج في الكود، فالصفحة تفضل شغالة
+    حتى لو ملف الصورة ضاع أو اتلف وقت الرفع على GitHub.
+    """
+    for p in sorted(HERE.iterdir()):
+        if p.is_file() and p.stem.lower() == "logo" and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+            try:
+                data = p.read_bytes()
+                if data[:8] == b"\x89PNG\r\n\x1a\n":
+                    return base64.b64encode(data).decode("ascii"), "png"
+                if data[:3] == b"\xff\xd8\xff":
+                    return base64.b64encode(data).decode("ascii"), "jpeg"
+                if data[:4] == b"RIFF":
+                    return base64.b64encode(data).decode("ascii"), "webp"
+            except Exception:
+                pass
+    return LOGO_PNG_BASE64, "png"
+
+
+LOGO_B64, LOGO_MIME = load_logo()
 
 
 def open_in_new_tab_button(label, html_content, key):
@@ -111,7 +138,7 @@ st.markdown(
 st.markdown(
     f"""
     <div style="text-align:center; margin-bottom:4px;">
-        <img src="data:image/png;base64,{LOGO_PNG_BASE64}"
+        <img src="data:image/{LOGO_MIME};base64,{LOGO_B64}"
              style="width:130px; max-width:100%; display:inline-block;">
     </div>
     """,
