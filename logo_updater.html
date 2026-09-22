@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تحديث لوجو البرنامج</title>
+<style>
+  :root {
+    --red: #E30613;
+    --red-dark: #B8050F;
+    --pink: #FBEAEC;
+    --ink: #2B2B2B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background: #fafafa;
+    color: var(--ink);
+    margin: 0;
+    padding: 32px 16px;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 28px 26px;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  }
+  h1 {
+    font-size: 1.25rem;
+    color: var(--red-dark);
+    margin: 0 0 4px;
+  }
+  p.sub {
+    color: #777;
+    margin: 0 0 22px;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+  .drop {
+    border: 2px dashed #e3b8bd;
+    background: var(--pink);
+    border-radius: 12px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .drop.drag { border-color: var(--red); background: #fadfe2; }
+  .drop input { display: none; }
+  .drop .hint { color: #8a5a5f; font-size: 0.88rem; margin-top: 6px; }
+  .preview {
+    margin-top: 18px;
+    display: none;
+    text-align: center;
+  }
+  .preview img {
+    max-width: 220px;
+    max-height: 100px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 8px;
+    background: #fff;
+  }
+  .preview .meta { font-size: 0.82rem; color: #888; margin-top: 8px; }
+  textarea {
+    width: 100%;
+    height: 160px;
+    margin-top: 18px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.82rem;
+    direction: ltr;
+    text-align: left;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    resize: vertical;
+    display: none;
+  }
+  button {
+    background: linear-gradient(135deg, var(--red), var(--red-dark));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+    margin-top: 12px;
+    display: none;
+  }
+  button:active { transform: translateY(1px); }
+  .steps {
+    margin-top: 26px;
+    padding-top: 18px;
+    border-top: 1px solid #eee;
+    font-size: 0.88rem;
+    color: #555;
+    line-height: 1.9;
+  }
+  .steps b { color: var(--red-dark); }
+  .copied {
+    color: #1e8449;
+    font-size: 0.85rem;
+    margin-right: 10px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🖼️ تحديث لوجو البرنامج</h1>
+  <p class="sub">اختار صورة اللوجو الجديدة، وهيطلعلك كود جاهز تلصقه في ملف <code>assets_logo.py</code> بدل محتواه الحالي بالكامل. الصفحة دي شغّالة على جهازك بس، مفيش أي رفع لأي سيرفر.</p>
+
+  <label class="drop" id="drop">
+    <div>📤 دوس هنا أو اسحب صورة اللوجو</div>
+    <div class="hint">PNG أو JPG</div>
+    <input type="file" id="file" accept="image/png,image/jpeg,image/webp">
+  </label>
+
+  <div class="preview" id="preview">
+    <img id="previewImg" alt="معاينة اللوجو">
+    <div class="meta" id="meta"></div>
+  </div>
+
+  <textarea id="output" readonly></textarea>
+  <div>
+    <button id="copyBtn">📋 نسخ الكود</button>
+    <span class="copied" id="copied">✔ اتنسخ</span>
+  </div>
+
+  <div class="steps">
+    <b>بعد النسخ:</b><br>
+    1) افتح ملف <code>assets_logo.py</code> على GitHub ودوس على أيقونة القلم (Edit).<br>
+    2) امسح كل المحتوى القديم، والصق الكود الجديد بدله.<br>
+    3) دوس Commit changes. البرنامج هيتحدث لوحده خلال دقيقة أو اتنين.
+  </div>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+const preview = document.getElementById('preview');
+const previewImg = document.getElementById('previewImg');
+const meta = document.getElementById('meta');
+const output = document.getElementById('output');
+const copyBtn = document.getElementById('copyBtn');
+const copied = document.getElementById('copied');
+
+['dragenter', 'dragover'].forEach(evt =>
+  drop.addEventListener(evt, e => { e.preventDefault(); drop.classList.add('drag'); }));
+['dragleave', 'drop'].forEach(evt =>
+  drop.addEventListener(evt, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+
+drop.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) { alert('من فضلك اختار ملف صورة'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const dataUrl = reader.result;              // "data:image/png;base64,AAAA..."
+    const b64 = dataUrl.split(',')[1];
+
+    previewImg.src = dataUrl;
+    preview.style.display = 'block';
+
+    const img = new Image();
+    img.onload = () => {
+      meta.textContent = `${img.naturalWidth} × ${img.naturalHeight} بكسل — ${(file.size/1024).toFixed(0)} كيلوبايت`;
+    };
+    img.src = dataUrl;
+
+    const chunk = 120;
+    let lines = [];
+    for (let i = 0; i < b64.length; i += chunk) lines.push('    "' + b64.slice(i, i + chunk) + '"');
+    const code = 'LOGO_PNG_BASE64 = (\n' + lines.join('\n') + '\n)\n';
+
+    output.value = code;
+    output.style.display = 'block';
+    copyBtn.style.display = 'inline-block';
+    copied.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(output.value);
+  } catch (e) {
+    output.select();
+    document.execCommand('copy');
+  }
+  copied.style.display = 'inline';
+  setTimeout(() => copied.style.display = 'none', 2000);
+});
+</script>
+</body>
+</html>
